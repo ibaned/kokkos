@@ -49,6 +49,11 @@ ifeq ($(KOKKOS_INTERNAL_USE_OPENMP), 1)
 	CONDITIONAL_COPIES += copy-openmp
 endif
 
+ifeq ($(KOKKOS_INTERNAL_USE_MPI), 1)
+	KOKKOS_HEADERS_OPENMP += $(wildcard $(KOKKOS_PATH)/core/src/MPI/*.hpp)
+	CONDITIONAL_COPIES += copy-mpi
+endif
+
 messages: 
 	echo "Start Build"
 
@@ -111,6 +116,10 @@ copy-qthread: mkdir
 copy-openmp: mkdir
 	mkdir -p $(PREFIX)/include/OpenMP
 	cp $(KOKKOS_HEADERS_OPENMP) $(PREFIX)/include/OpenMP
+
+copy-mpi: mkdir
+	mkdir -p $(PREFIX)/include/MPI
+	cp $(KOKKOS_HEADERS_MPI) $(PREFIX)/include/MPI
 
 install: mkdir $(CONDITIONAL_COPIES) build-lib 
 	cp $(NVCC_WRAPPER) $(PREFIX)/bin

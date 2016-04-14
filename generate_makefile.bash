@@ -29,6 +29,9 @@ case $key in
     --with-openmp)
     KOKKOS_DEVICES="${KOKKOS_DEVICES},OpenMP"
     ;;
+    --with-mpi)
+    KOKKOS_DEVICES="${KOKKOS_DEVICES},MPI"
+    ;;
     --with-pthread)
     KOKKOS_DEVICES="${KOKKOS_DEVICES},Pthread"
     ;;
@@ -74,6 +77,7 @@ case $key in
     echo ""
     echo "--with-cuda[=/Path/To/Cuda]:      enable Cuda and set path to Cuda Toolkit"
     echo "--with-openmp:                    enable OpenMP backend"
+    echo "--with-mpi:                       enable MPI shared memory backend"
     echo "--with-pthread:                   enable Pthreads backend"
     echo "--with-serial:                    enable Serial backend"
     echo "--with-qthread=/Path/To/Qthread:  enable Qthread backend"
