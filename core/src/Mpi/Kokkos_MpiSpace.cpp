@@ -48,108 +48,80 @@
 #include <algorithm>
 #include <Kokkos_Macros.hpp>
 
-/* only compile this file if CUDA is enabled for Kokkos */
+/* only compile this file if MPI is enabled for Kokkos */
 #ifdef KOKKOS_HAVE_MPI
 
 #include <Kokkos_Mpi.hpp>
 #include <Kokkos_MpiSpace.hpp>
 
-#include <Mpi/Kokkos_Mpi_Internal.hpp>
 #include <impl/Kokkos_Error.hpp>
 
 /*--------------------------------------------------------------------------*/
 /*--------------------------------------------------------------------------*/
 
 namespace Kokkos {
+
 namespace Impl {
 
-namespace {
-   cudaStream_t get_deep_copy_stream() {
-     static cudaStream_t s = 0;
-     if( s == 0) {
-       cudaStreamCreate ( &s );
-     }
-     return s;
-   }
-}
+/* these are horrible ways to get
+   the team and leader comms, but
+   the right answer requires passing
+   MPI_Comm s through several constructors,
+   so I'll look at that later */
 
-DeepCopy<MpiSpace,MpiSpace,Cuda>::DeepCopy( void * dst , const void * src , size_t n )
-{ CUDA_SAFE_CALL( cudaMemcpy( dst , src , n , cudaMemcpyDefault ) ); }
-
-DeepCopy<HostSpace,MpiSpace,Cuda>::DeepCopy( void * dst , const void * src , size_t n )
-{ CUDA_SAFE_CALL( cudaMemcpy( dst , src , n , cudaMemcpyDefault ) ); }
-
-DeepCopy<MpiSpace,HostSpace,Cuda>::DeepCopy( void * dst , const void * src , size_t n )
-{ CUDA_SAFE_CALL( cudaMemcpy( dst , src , n , cudaMemcpyDefault ) ); }
-
-DeepCopy<MpiSpace,MpiSpace,Cuda>::DeepCopy( const Cuda & instance , void * dst , const void * src , size_t n )
-{ CUDA_SAFE_CALL( cudaMemcpyAsync( dst , src , n , cudaMemcpyDefault , instance.cuda_stream() ) ); }
-
-DeepCopy<HostSpace,MpiSpace,Cuda>::DeepCopy( const Cuda & instance , void * dst , const void * src , size_t n )
-{ CUDA_SAFE_CALL( cudaMemcpyAsync( dst , src , n , cudaMemcpyDefault , instance.cuda_stream() ) ); }
-
-DeepCopy<MpiSpace,HostSpace,Cuda>::DeepCopy( const Cuda & instance , void * dst , const void * src , size_t n )
-{ CUDA_SAFE_CALL( cudaMemcpyAsync( dst , src , n , cudaMemcpyDefault , instance.cuda_stream() ) ); }
-
-void DeepCopyAsyncCuda( void * dst , const void * src , size_t n) {
-  cudaStream_t s = get_deep_copy_stream();
-  CUDA_SAFE_CALL( cudaMemcpyAsync( dst , src , n , cudaMemcpyDefault , s ) );
-  cudaStreamSynchronize(s);
-}
-
-} // namespace Impl
-} // namespace Kokkos
-
-/*--------------------------------------------------------------------------*/
-/*--------------------------------------------------------------------------*/
-
-
-namespace Kokkos {
-
-void MpiSpace::access_error()
+MPI_Comm get_mpi_team_comm(void)
 {
-  const std::string msg("Kokkos::MpiSpace::access_error attempt to execute Cuda function from non-Cuda space" );
-  Kokkos::Impl::throw_runtime_exception( msg );
+  static MPI_Comm team_comm = MPI_COMM_NULL;
+  if (team_comm == MPI_COMM_NULL)
+    MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL,
+        &team_comm);
+  return team_comm;
 }
 
-void MpiSpace::access_error( const void * const )
+int get_mpi_world_rank(void)
 {
-  const std::string msg("Kokkos::MpiSpace::access_error attempt to execute Cuda function from non-Cuda space" );
-  Kokkos::Impl::throw_runtime_exception( msg );
+  int rank;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  return rank;
 }
 
-/*--------------------------------------------------------------------------*/
-
-bool CudaUVMSpace::available()
+int get_mpi_team_rank(void)
 {
-#if defined( CUDA_VERSION ) && ( 6000 <= CUDA_VERSION ) && !defined(__APPLE__)
-  enum { UVM_available = true };
-#else
-  enum { UVM_available = false };
-#endif
-  return UVM_available;
+  int rank;
+  MPI_Comm_rank(get_mpi_team_comm(), &rank);
+  return rank;
 }
 
-/*--------------------------------------------------------------------------*/
+int get_mpi_team_size(void)
+{
+  int size;
+  MPI_Comm_size(get_mpi_team_comm(), &size);
+  return size;
+}
 
-} // namespace Kokkos
+int get_mpi_team(void)
+{
+  return get_mpi_world_rank() % get_mpi_team_size();
+}
 
-/*--------------------------------------------------------------------------*/
-/*--------------------------------------------------------------------------*/
+MPI_Comm get_mpi_leader_comm(void)
+{
+  static MPI_Comm leader_comm = MPI_COMM_NULL;
+  if (team_comm == MPI_COMM_NULL) {
+    int world_rank;
+    int team_rank;
+    MPI_Comm_split(MPI_COMM_WORLD,
+        get_mpi_team(),
+        get_mpi_team_rank(),
+        &leader_comm);
+  }
+  return team_comm;
+}
 
-namespace Kokkos {
+}
 
 MpiSpace::MpiSpace()
   : m_device( Kokkos::Cuda().cuda_device() )
-{
-}
-
-CudaUVMSpace::CudaUVMSpace()
-  : m_device( Kokkos::Cuda().cuda_device() )
-{
-}
-
-CudaHostPinnedSpace::CudaHostPinnedSpace()
 {
 }
 
