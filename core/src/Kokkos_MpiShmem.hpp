@@ -176,9 +176,6 @@ public:
   static int world_rank();
   static int world_size();
 
-  cudaStream_t cuda_stream() const { return m_stream ; }
-  int          cuda_device() const { return m_device ; }
-
   //@}
   //--------------------------------------------------------------------------
 
