@@ -83,10 +83,6 @@ public:
   /**\brief  Deallocate untracked memory in the shmem space */
   void deallocate( void * const arg_alloc_ptr
                  , const size_t arg_alloc_size ) const ;
-
-private:
-
-  MPI_Comm  team_comm ;
 };
 
 } // namespace Kokkos
