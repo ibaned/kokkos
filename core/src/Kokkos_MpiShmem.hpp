@@ -160,13 +160,6 @@ public:
   static void initialize( MPI_Comm world_comm = MPI_COMM_WORLD
                         , MPI_Comm team_comm = MPI_COMM_NULL );
 
-  /// \brief Get the "world" communicator
-  MPI_Comm world_comm() const { return m_world ; }
-  MPI_Comm team_comm() const { return m_team ; }
-
-  /// \brief Get the "team" communicator
-  MPI_Comm team_comm();
-
   /// \brief Get which team in the world this proc belongs to
   static int team();
 
@@ -177,11 +170,6 @@ public:
 
   //@}
   //--------------------------------------------------------------------------
-
-private:
-
-  MPI_Comm     m_world ;
-  MPI_Comm     m_team ;
 };
 
 } // namespace Kokkos

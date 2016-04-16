@@ -49,8 +49,6 @@
 /* only compile this file if MPISHMEM is enabled for Kokkos */
 #ifdef KOKKOS_HAVE_MPISHMEM
 
-#include <MpiShmem/Kokkos_MpiShmem_Internal.hpp>
-#include <impl/Kokkos_AllocationTracker.hpp>
 #include <impl/Kokkos_Error.hpp>
 
 /*--------------------------------------------------------------------------*/
@@ -66,6 +64,76 @@ namespace Kokkos {
 namespace Impl  {
 
 // put MpiShmemInternal here as a singleton
+class MpiShmemInternal {
+private:
+  MpiShmemInternal( const MpiShmemInternal & );
+  MpiShmemInternal & operator = ( const MpiShmemInternal & );
+public:
+
+  typedef MpiShmem::size_type size_type;
+
+  MPI_Comm m_world;
+  MPI_Comm m_team;
+  bool     m_called_mpi_init;
+
+  static MpiShmemInternal & singleton();
+
+  int verify_is_initialized( const char * const label ) const;
+
+  int is_initialized() const
+  {
+    return m_world != MPI_COMM_NULL && m_team != MPI_COMM_NULL;
+  }
+
+  void initialize( MPI_Comm world, MPI_Comm team );
+  void finalize();
+
+  void print_configuration( std::ostream & ) const ;
+
+  ~MpiShmemInternal();
+
+  MpiShmemInternal()
+    : m_world( MPI_COMM_NULL )
+    , m_team( MPI_COMM_NULL )
+    , m_called_mpi_init( false )
+  {}
+};
+
+MpiShmemInternal & MpiShmemInternal::singleton()
+{
+  static MpiShmemInternal self;
+  return self;
+}
+
+void MpiShmemInternal::initialize( MPI_Comm world, MPI_Comm team )
+{
+  int is_mpi_initialized;
+  MPI_Initialized(&is_mpi_initialized);
+  if (!is_mpi_initialized) {
+    MPI_Init(NULL,NULL);
+    m_called_mpi_init = true;
+  }
+  m_world = world;
+  if (team == MPI_COMM_NULL)
+    MPI_Comm_split_type(world, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL, &team);
+  m_team = team;
+}
+
+void MpiShmemInternal::finalize()
+{
+  if (m_team != MPI_COMM_NULL)
+    MPI_Comm_free(&m_team);
+  if (m_called_mpi_init)
+    MPI_Finalize();
+}
+
+void print_configuration( std::ostream & ) const
+{
+}
+
+MpiShmemInternal::~MpiShmemInternal()
+{
+}
 
 }// namespace Impl
 } // namespace Kokkos
@@ -74,63 +142,54 @@ namespace Impl  {
 
 namespace Kokkos {
 
-MpiShmem::size_type MpiShmem::detect_device_count()
-{ return Impl::MpiShmemInternalDevices::singleton().m_cudaDevCount ; }
-
-int MpiShmem::concurrency() {
-  return 131072;
+int MpiShmem::concurrency()
+{
+  return MpiShmem::team_size();
 }
 
 int MpiShmem::is_initialized()
-{ return Impl::MpiShmemInternal::singleton().is_initialized(); }
-
-void MpiShmem::initialize( const MpiShmem::SelectDevice config , size_t num_instances )
-{ Impl::MpiShmemInternal::singleton().initialize( config.cuda_device_id , num_instances ); }
-
-MpiShmem::size_type MpiShmem::device_arch()
 {
-  const int dev_id = Impl::MpiShmemInternal::singleton().m_cudaDev ;
+  return Impl::MpiShmemInternal::singleton().is_initialized();
+}
 
-  int dev_arch = 0 ;
-
-  if ( 0 <= dev_id ) {
-    const struct cudaDeviceProp & cudaProp =
-      Impl::MpiShmemInternalDevices::singleton().m_cudaProp[ dev_id ] ;
-
-    dev_arch = cudaProp.major * 100 + cudaProp.minor ;
-  }
-
-  return dev_arch ;
+static void MpiShmem::initialize( MPI_Comm world_comm
+                                , MPI_Comm team_comm );
+{
+  Impl::MpiShmemInternal::singleton().initialize(
+      world_comm, team_comm );
 }
 
 void MpiShmem::finalize()
-{ Impl::MpiShmemInternal::singleton().finalize(); }
-
-MpiShmem::MpiShmem()
-  : m_device( Impl::MpiShmemInternal::singleton().m_cudaDev )
-  , m_stream( 0 )
 {
-  Impl::MpiShmemInternal::singleton().verify_is_initialized( "MpiShmem instance constructor" );
+  Impl::MpiShmemInternal::singleton().finalize();
 }
 
-MpiShmem::MpiShmem( const int instance_id )
-  : m_device( Impl::MpiShmemInternal::singleton().m_cudaDev )
-  , m_stream(
-      Impl::MpiShmemInternal::singleton().verify_is_initialized( "MpiShmem instance constructor" )
-        ? Impl::MpiShmemInternal::singleton().m_stream[ instance_id % Impl::MpiShmemInternal::singleton().m_streamCount ]
-        : 0 )
-{}
+MpiShmem::MpiShmem()
+{
+}
+
+MpiShmem::MpiShmem()
+{
+}
 
 void MpiShmem::print_configuration( std::ostream & s , const bool )
-{ Impl::MpiShmemInternal::singleton().print_configuration( s ); }
+{
+  Impl::MpiShmemInternal::singleton().print_configuration( s );
+}
 
-bool MpiShmem::sleep() { return false ; }
+bool MpiShmem::sleep()
+{
+  return false;
+}
 
-bool MpiShmem::wake() { return true ; }
+bool MpiShmem::wake()
+{
+  return true;
+}
 
 void MpiShmem::fence()
 {
-  Kokkos::Impl::cuda_device_synchronize();
+  Impl::MpiShmemInternal::singleton().fence();
 }
 
 } // namespace Kokkos
