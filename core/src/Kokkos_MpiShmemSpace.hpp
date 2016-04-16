@@ -48,13 +48,7 @@
 
 #if defined( KOKKOS_HAVE_MPISHMEM )
 
-#include <iosfwd>
-#include <typeinfo>
-#include <string>
-
 #include <Kokkos_HostSpace.hpp>
-
-#include <impl/Kokkos_AllocationTracker.hpp>
 
 #include <mpi.h>
 
@@ -103,138 +97,36 @@ private:
 namespace Kokkos {
 namespace Impl {
 
-void DeepCopyAsyncMpiShmem( void * dst , const void * src , size_t n);
-
-template<> struct DeepCopy< MpiShmemSpace , MpiShmemSpace , MpiShmem>
-{
-  DeepCopy( void * dst , const void * src , size_t );
-  DeepCopy( const MpiShmem & , void * dst , const void * src , size_t );
-};
-
-template<> struct DeepCopy< MpiShmemSpace , HostSpace , MpiShmem >
-{
-  DeepCopy( void * dst , const void * src , size_t );
-  DeepCopy( const MpiShmem & , void * dst , const void * src , size_t );
-};
-
-template<> struct DeepCopy< HostSpace , MpiShmemSpace , MpiShmem >
-{
-  DeepCopy( void * dst , const void * src , size_t );
-  DeepCopy( const MpiShmem & , void * dst , const void * src , size_t );
-};
-
-template<class ExecutionSpace> struct DeepCopy< MpiShmemSpace , MpiShmemSpace , ExecutionSpace >
-{
-  inline
-  DeepCopy( void * dst , const void * src , size_t n )
-  { (void) DeepCopy< MpiShmemSpace , MpiShmemSpace , MpiShmem >( dst , src , n ); }
-
-  inline
-  DeepCopy( const ExecutionSpace& exec, void * dst , const void * src , size_t n )
-  {
-    exec.fence();
-    DeepCopyAsyncMpiShmem (dst,src,n);
+template<class ExecutionSpace>
+struct DeepCopy<MpiShmemSpace,HostSpace,ExecutionSpace> {
+  DeepCopy( void * dst , const void * src , size_t n ) {
+    memcpy( dst , src , n );
   }
-};
-
-template<class ExecutionSpace> struct DeepCopy< MpiShmemSpace , HostSpace , ExecutionSpace >
-{
-  inline
-  DeepCopy( void * dst , const void * src , size_t n )
-  { (void) DeepCopy< MpiShmemSpace , HostSpace , MpiShmem>( dst , src , n ); }
-
-  inline
-  DeepCopy( const ExecutionSpace& exec, void * dst , const void * src , size_t n )
-  {
+  DeepCopy( const ExecutionSpace& exec, void * dst , const void * src , size_t n ) {
     exec.fence();
-    DeepCopyAsyncMpiShmem (dst,src,n);
+    memcpy( dst , src , n );
   }
 };
 
 template<class ExecutionSpace>
-struct DeepCopy< HostSpace , MpiShmemSpace , ExecutionSpace >
-{
-  inline
-  DeepCopy( void * dst , const void * src , size_t n )
-  { (void) DeepCopy< HostSpace , MpiShmemSpace , MpiShmem >( dst , src , n ); }
-
-  inline
-  DeepCopy( const ExecutionSpace& exec, void * dst , const void * src , size_t n )
-  {
+struct DeepCopy<HostSpace,MpiShmemSpace,ExecutionSpace> {
+  DeepCopy( void * dst , const void * src , size_t n ) {
+    memcpy( dst , src , n );
+  }
+  DeepCopy( const ExecutionSpace& exec, void * dst , const void * src , size_t n ) {
     exec.fence();
-    DeepCopyAsyncMpiShmem (dst,src,n);
+    memcpy( dst , src , n );
   }
 };
 
 template<class ExecutionSpace>
-struct DeepCopy< MpiShmemSpace , MpiShmemHostPinnedSpace , ExecutionSpace>
-{
-  inline
-  DeepCopy( void * dst , const void * src , size_t n )
-  { (void) DeepCopy< MpiShmemSpace , HostSpace , MpiShmem >( dst , src , n ); }
-
-  inline
-  DeepCopy( const ExecutionSpace& exec, void * dst , const void * src , size_t n )
-  {
-    exec.fence();
-    DeepCopyAsyncMpiShmem (dst,src,n);
+struct DeepCopy<MpiShmemSpace,MpiShmemSpace,ExecutionSpace> {
+  DeepCopy( void * dst , const void * src , size_t n ) {
+    memcpy( dst , src , n );
   }
-};
-
-template<class ExecutionSpace> struct DeepCopy< MpiShmemHostPinnedSpace , MpiShmemSpace , ExecutionSpace >
-{
-  inline
-  DeepCopy( void * dst , const void * src , size_t n )
-  { (void) DeepCopy< HostSpace , MpiShmemSpace , MpiShmem >( dst , src , n ); }
-
-  inline
-  DeepCopy( const ExecutionSpace& exec, void * dst , const void * src , size_t n )
-  {
+  DeepCopy( const ExecutionSpace& exec, void * dst , const void * src , size_t n ) {
     exec.fence();
-    DeepCopyAsyncMpiShmem (dst,src,n);
-  }
-};
-
-template<class ExecutionSpace> struct DeepCopy< MpiShmemHostPinnedSpace , MpiShmemHostPinnedSpace , ExecutionSpace >
-{
-  inline
-  DeepCopy( void * dst , const void * src , size_t n )
-  { (void) DeepCopy< HostSpace , HostSpace , MpiShmem >( dst , src , n ); }
-
-  inline
-  DeepCopy( const ExecutionSpace& exec, void * dst , const void * src , size_t n )
-  {
-    exec.fence();
-    DeepCopyAsyncMpiShmem (dst,src,n);
-  }
-};
-
-template<class ExecutionSpace> struct DeepCopy< MpiShmemHostPinnedSpace , HostSpace , ExecutionSpace >
-{
-  inline
-  DeepCopy( void * dst , const void * src , size_t n )
-  { (void) DeepCopy< HostSpace , HostSpace , MpiShmem >( dst , src , n ); }
-
-  inline
-  DeepCopy( const ExecutionSpace& exec, void * dst , const void * src , size_t n )
-  {
-    exec.fence();
-    DeepCopyAsyncMpiShmem (dst,src,n);
-  }
-};
-
-
-template<class ExecutionSpace> struct DeepCopy< HostSpace , MpiShmemHostPinnedSpace , ExecutionSpace >
-{
-  inline
-  DeepCopy( void * dst , const void * src , size_t n )
-  { (void) DeepCopy< HostSpace , HostSpace , MpiShmem >( dst , src , n ); }
-
-  inline
-  DeepCopy( const ExecutionSpace& exec, void * dst , const void * src , size_t n )
-  {
-    exec.fence();
-    DeepCopyAsyncMpiShmem (dst,src,n);
+    memcpy( dst , src , n );
   }
 };
 
@@ -252,32 +144,16 @@ template<>
 struct VerifyExecutionCanAccessMemorySpace< Kokkos::MpiShmemSpace , Kokkos::HostSpace >
 {
   enum { value = true };
-  KOKKOS_INLINE_FUNCTION static void verify( void ) {}
-  KOKKOS_INLINE_FUNCTION static void verify( const void * ) { }
+  inline static void verify( void ) {}
+  inline static void verify( const void * ) { }
 };
 
-/** Running in MpiShmemSpace attempting to access an unknown space: error */
-template< class OtherSpace >
-struct VerifyExecutionCanAccessMemorySpace<
-  typename enable_if< ! is_same<Kokkos::MpiShmemSpace,OtherSpace>::value , Kokkos::MpiShmemSpace >::type ,
-  OtherSpace >
-{
-  enum { value = false };
-  KOKKOS_INLINE_FUNCTION static void verify( void )
-    { Kokkos::abort("MpiShmem code attempted to access unknown Space memory"); }
-
-  KOKKOS_INLINE_FUNCTION static void verify( const void * )
-    { Kokkos::abort("MpiShmem code attempted to access unknown Space memory"); }
-};
-
-//----------------------------------------------------------------------------
-/** Running in HostSpace attempting to access MpiShmemSpace */
 template<>
 struct VerifyExecutionCanAccessMemorySpace< Kokkos::HostSpace , Kokkos::MpiShmemSpace >
 {
-  enum { value = false };
-  inline static void verify( void ) { MpiShmemSpace::access_error(); }
-  inline static void verify( const void * p ) { MpiShmemSpace::access_error(p); }
+  enum { value = true };
+  inline static void verify( void ) { }
+  inline static void verify( const void * ) { }
 };
 
 } // namespace Impl
