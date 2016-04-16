@@ -90,6 +90,8 @@ public:
 
   void print_configuration( std::ostream & ) const ;
 
+  void fence() const;
+
   ~MpiShmemInternal();
 
   MpiShmemInternal()
@@ -127,8 +129,13 @@ void MpiShmemInternal::finalize()
     MPI_Finalize();
 }
 
-void print_configuration( std::ostream & ) const
+void MpiShmemInternal::print_configuration( std::ostream & ) const
 {
+}
+
+void MpiShmemInternal::fence() const
+{
+  MPI_Barrier(m_team);
 }
 
 MpiShmemInternal::~MpiShmemInternal()
