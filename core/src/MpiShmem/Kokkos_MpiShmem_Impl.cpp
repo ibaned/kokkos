@@ -135,7 +135,7 @@ void MpiShmemInternal::print_configuration( std::ostream & ) const
 
 void MpiShmemInternal::fence() const
 {
-  MPI_Barrier(m_team);
+  Kokkos::memory_fence();
 }
 
 MpiShmemInternal::~MpiShmemInternal()
