@@ -58,20 +58,35 @@ MpiShmemSpace::MpiShmemSpace()
 {
 }
 
-void * MpiShmemSpace::allocate( const size_t arg_alloc_size ) const
+void * MpiShmemSpace::allocate( const size_t total_data_size,
+                              , const size_t header_size
+                              , MPI_Win* win ) const
 {
   void * ptr = NULL;
 
-  MPISHMEM_SAFE_CALL( cudaMalloc( &ptr, arg_alloc_size ) );
+  size_t team_size = static_cast<size_t>(MpiShmem::team_size());
+  size_t team_rank = static_cast<size_t>(MpiShmem::team_size());
+  size_t quot = total_data_size / team_size;
+  size_t rem = total_data_size % team_size;
+  size_t local_size = quot;
+  if (team_rank < rem)
+    local_size++;
+  if (team_rank == 0)
+    local_size += header_size;
+
+  MPI_Win_allocate_shared(local_size,
+                          sizeof(size_type),
+                          MPI_INFO_NULL,
+                          MpiShmem::team_comm(),
+                          &ptr,
+                          win);
 
   return ptr ;
 }
 
 void MpiShmemSpace::deallocate( void * const arg_alloc_ptr , const size_t /* arg_alloc_size */ ) const
 {
-  try {
-    MPISHMEM_SAFE_CALL( cudaFree( arg_alloc_ptr ) );
-  } catch(...) {}
+  MPI_Free_mem(arg_alloc_ptr);
 }
 
 } // namespace Kokkos
@@ -86,53 +101,46 @@ namespace Impl {
 SharedAllocationRecord< void , void >
 SharedAllocationRecord< Kokkos::MpiShmemSpace , void >::s_root_record ;
 
-::cudaTextureObject_t
 SharedAllocationRecord< Kokkos::MpiShmemSpace , void >::
-attach_texture_object( const unsigned sizeof_alias
-                     , void *   const alloc_ptr
-                     , size_t   const alloc_size )
+SharedAllocationRecord( const Kokkos::MpiShmemSpace & arg_space
+                      , const std::string       & arg_label
+                      , const size_t              arg_alloc_size
+                      , const RecordBase::function_type arg_dealloc
+                      )
+  : SharedAllocationRecord< void , void >
+      ( & SharedAllocationRecord< Kokkos::MpiShmemSpace , void >::s_root_record
+  // The need to come up with the allocation pointer immediately when
+  // calling the base class constructor really makes this awkward.
+  // MPI needs to create the allocation and Window simultaneously,
+  // so notice the &m_win at the end here...
+  // having initialize methods for SharedAllocationRecord<void,void> would help.
+      , reinterpret_cast<SharedAllocationHeader*>(
+            arg_space.allocate(arg_alloc_size
+                              ,sizeof(SharedAllocationHeader)
+                              ,&m_win))
+      , sizeof(SharedAllocationHeader) + arg_alloc_size
+      , arg_dealloc
+      )
+  , m_space( arg_space )
 {
-  enum { TEXTURE_BOUND_1D = 1u << 27 };
-
-  if ( ( alloc_ptr == 0 ) || ( sizeof_alias * TEXTURE_BOUND_1D <= alloc_size ) ) {
-    std::ostringstream msg ;
-    msg << "Kokkos::MpiShmemSpace ERROR: Cannot attach texture object to"
-        << " alloc_ptr(" << alloc_ptr << ")"
-        << " alloc_size(" << alloc_size << ")"
-        << " max_size(" << ( sizeof_alias * TEXTURE_BOUND_1D ) << ")" ;
-    std::cerr << msg.str() << std::endl ;
-    std::cerr.flush();
-    Kokkos::Impl::throw_runtime_exception( msg.str() );
-  }
-
-  ::cudaTextureObject_t tex_obj ;
-
-  struct cudaResourceDesc resDesc ;
-  struct cudaTextureDesc  texDesc ;
-
-  memset( & resDesc , 0 , sizeof(resDesc) );
-  memset( & texDesc , 0 , sizeof(texDesc) );
-
-  resDesc.resType                = cudaResourceTypeLinear ;
-  resDesc.res.linear.desc        = ( sizeof_alias ==  4 ?  cudaCreateChannelDesc< int >() :
-                                   ( sizeof_alias ==  8 ?  cudaCreateChannelDesc< ::int2 >() :
-                                  /* sizeof_alias == 16 */ cudaCreateChannelDesc< ::int4 >() ) );
-  resDesc.res.linear.sizeInBytes = alloc_size ;
-  resDesc.res.linear.devPtr      = alloc_ptr ;
-
-  MPISHMEM_SAFE_CALL( cudaCreateTextureObject( & tex_obj , & resDesc, & texDesc, NULL ) );
-
-  return tex_obj ;
+  // Fill in the Header information
+  RecordBase::m_alloc_ptr->m_record =
+      static_cast< SharedAllocationRecord< void , void > * >( this );
+  strncpy( RecordBase::m_alloc_ptr->m_label
+          , arg_label.c_str()
+          , SharedAllocationHeader::maximum_label_length
+          );
 }
+
+// TODO: much of the following is copy-pasted from
+// HostSpace, since the only real difference is how
+// we (de)allocate.
+// move this code to some shared place.
 
 std::string
 SharedAllocationRecord< Kokkos::MpiShmemSpace , void >::get_label() const
 {
-  SharedAllocationHeader header ;
-
-  Kokkos::Impl::DeepCopy< Kokkos::HostSpace , Kokkos::MpiShmemSpace >( & header , RecordBase::head() , sizeof(SharedAllocationHeader) );
-
-  return std::string( header.m_label );
+  return std::string( RecordBase::head()->m_label );
 }
 
 SharedAllocationRecord< Kokkos::MpiShmemSpace , void > *
@@ -158,37 +166,6 @@ SharedAllocationRecord< Kokkos::MpiShmemSpace , void >::
   m_space.deallocate( SharedAllocationRecord< void , void >::m_alloc_ptr
                     , SharedAllocationRecord< void , void >::m_alloc_size
                     );
-}
-
-SharedAllocationRecord< Kokkos::MpiShmemSpace , void >::
-SharedAllocationRecord( const Kokkos::MpiShmemSpace & arg_space
-                      , const std::string       & arg_label
-                      , const size_t              arg_alloc_size
-                      , const SharedAllocationRecord< void , void >::function_type arg_dealloc
-                      )
-  // Pass through allocated [ SharedAllocationHeader , user_memory ]
-  // Pass through deallocation function
-  : SharedAllocationRecord< void , void >
-      ( & SharedAllocationRecord< Kokkos::MpiShmemSpace , void >::s_root_record
-      , reinterpret_cast<SharedAllocationHeader*>( arg_space.allocate( sizeof(SharedAllocationHeader) + arg_alloc_size ) )
-      , sizeof(SharedAllocationHeader) + arg_alloc_size
-      , arg_dealloc
-      )
-  , m_tex_obj( 0 )
-  , m_space( arg_space )
-{
-  SharedAllocationHeader header ;
-
-  // Fill in the Header information
-  header.m_record = static_cast< SharedAllocationRecord< void , void > * >( this );
-
-  strncpy( header.m_label
-          , arg_label.c_str()
-          , SharedAllocationHeader::maximum_label_length
-          );
-
-  // Copy to device memory
-  Kokkos::Impl::DeepCopy<MpiShmemSpace,HostSpace>::DeepCopy( RecordBase::m_alloc_ptr , & header , sizeof(SharedAllocationHeader) );
 }
 
 //----------------------------------------------------------------------------
@@ -225,8 +202,9 @@ reallocate_tracked( void * const arg_alloc_ptr
   SharedAllocationRecord * const r_old = get_record( arg_alloc_ptr );
   SharedAllocationRecord * const r_new = allocate( r_old->m_space , r_old->get_label() , arg_alloc_size );
 
-  Kokkos::Impl::DeepCopy<MpiShmemSpace,MpiShmemSpace>( r_new->data() , r_old->data()
-                                             , std::min( r_old->size() , r_new->size() ) );
+  Kokkos::Impl::DeepCopy<MpiShmemSpace,MpiShmemSpace>(
+       r_new->data() , r_old->data()
+     , std::min( r_old->size() , r_new->size() ) );
 
   RecordBase::increment( r_new );
   RecordBase::decrement( r_old );
@@ -239,38 +217,15 @@ reallocate_tracked( void * const arg_alloc_ptr
 SharedAllocationRecord< Kokkos::MpiShmemSpace , void > *
 SharedAllocationRecord< Kokkos::MpiShmemSpace , void >::get_record( void * alloc_ptr )
 {
-  using Header     = SharedAllocationHeader ;
-  using RecordBase = SharedAllocationRecord< void , void > ;
-  using RecordMpiShmem = SharedAllocationRecord< Kokkos::MpiShmemSpace , void > ;
+  typedef SharedAllocationHeader  Header ;
+  typedef SharedAllocationRecord< Kokkos::HostSpace , void >  RecordHost ;
 
-#if 0
-  // Copy the header from the allocation
-  Header head ;
+  SharedAllocationHeader const * const head   = alloc_ptr ? Header::get_header( alloc_ptr ) : (SharedAllocationHeader *)0 ;
+  RecordHost                   * const record = head ? static_cast< RecordHost * >( head->m_record ) : (RecordHost *) 0 ;
 
-  Header const * const head_cuda = alloc_ptr ? Header::get_header( alloc_ptr ) : (Header*) 0 ;
-
-  if ( alloc_ptr ) {
-    Kokkos::Impl::DeepCopy<HostSpace,MpiShmemSpace>::DeepCopy( & head , head_cuda , sizeof(SharedAllocationHeader) );
+  if ( ! alloc_ptr || record->m_alloc_ptr != head ) {
+    Kokkos::Impl::throw_runtime_exception( std::string("Kokkos::Experimental::Impl::SharedAllocationRecord< Kokkos::HostSpace , void >::get_record ERROR" ) );
   }
-
-  RecordMpiShmem * const record = alloc_ptr ? static_cast< RecordMpiShmem * >( head.m_record ) : (RecordMpiShmem *) 0 ;
-
-  if ( ! alloc_ptr || record->m_alloc_ptr != head_cuda ) {
-    Kokkos::Impl::throw_runtime_exception( std::string("Kokkos::Experimental::Impl::SharedAllocationRecord< Kokkos::MpiShmemSpace , void >::get_record ERROR" ) );
-  }
-
-#else
-
-  // Iterate the list to search for the record among all allocations
-  // requires obtaining the root of the list and then locking the list.
-
-  RecordMpiShmem * const record = static_cast< RecordMpiShmem * >( RecordBase::find( & s_root_record , alloc_ptr ) );
-
-  if ( record == 0 ) {
-    Kokkos::Impl::throw_runtime_exception( std::string("Kokkos::Experimental::Impl::SharedAllocationRecord< Kokkos::MpiShmemSpace , void >::get_record ERROR" ) );
-  }
-
-#endif
 
   return record ;
 }

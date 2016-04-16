@@ -175,7 +175,7 @@ MpiShmem::MpiShmem()
 {
 }
 
-MpiShmem::MpiShmem()
+MpiShmem::~MpiShmem()
 {
 }
 
@@ -197,6 +197,50 @@ bool MpiShmem::wake()
 void MpiShmem::fence()
 {
   Impl::MpiShmemInternal::singleton().fence();
+}
+
+MPI_Comm MpiShmem::team_comm()
+{
+  return MpiShmemInternal::instance().m_team;
+}
+
+MPI_Comm MpiShmem::world_comm()
+{
+  return MpiShmemInternal::instance().m_team;
+}
+
+  /// \brief Get which team in the world this proc belongs to
+int MpiShmem::which_team()
+{
+  return world_rank() / team_size();
+}
+
+int MpiShmem::team_rank()
+{
+  int rank;
+  MPI_Comm_rank( team_comm(), &rank );
+  return rank;
+}
+
+int MpiShmem::team_size()
+{
+  int size;
+  MPI_Comm_rank( team_comm(), &size );
+  return size;
+}
+
+int MpiShmem::world_rank()
+{
+  int size;
+  MPI_Comm_rank( world_comm(), &size );
+  return size;
+}
+
+int MpiShmem::world_size()
+{
+  int size;
+  MPI_Comm_rank( world_comm(), &size );
+  return size;
 }
 
 } // namespace Kokkos

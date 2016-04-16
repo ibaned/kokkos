@@ -146,7 +146,7 @@ public:
   //! \name  MpiShmem space instances
   //@{
 
-  ~MpiShmem() {}
+  ~MpiShmem();
   MpiShmem();
   explicit MpiShmem( MPI_Comm world_comm
                    , MPI_Comm team_comm );
@@ -160,8 +160,10 @@ public:
   static void initialize( MPI_Comm world_comm = MPI_COMM_WORLD
                         , MPI_Comm team_comm = MPI_COMM_NULL );
 
+  static MPI_Comm team_comm();
+  static MPI_Comm world_comm();
   /// \brief Get which team in the world this proc belongs to
-  static int team();
+  static int which_team();
 
   static int team_rank();
   static int team_size();
