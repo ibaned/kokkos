@@ -51,7 +51,6 @@
 #if defined( KOKKOS_HAVE_MPISHMEM )
 
 #include <iosfwd>
-#include <vector>
 
 #include <Kokkos_MpiShmemSpace.hpp>
 
