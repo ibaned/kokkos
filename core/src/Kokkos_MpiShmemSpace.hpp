@@ -55,6 +55,7 @@
 /*--------------------------------------------------------------------------*/
 
 namespace Kokkos {
+namespace Experimental {
 
 /** \brief  MpiShmem on-device memory management */
 
@@ -85,6 +86,7 @@ public:
                  , const size_t arg_alloc_size ) const ;
 };
 
+} // namespace Experimental
 } // namespace Kokkos
 
 /*--------------------------------------------------------------------------*/
@@ -94,7 +96,7 @@ namespace Kokkos {
 namespace Impl {
 
 template<class ExecutionSpace>
-struct DeepCopy<MpiShmemSpace,HostSpace,ExecutionSpace> {
+struct DeepCopy<Experimental::MpiShmemSpace,HostSpace,ExecutionSpace> {
   DeepCopy( void * dst , const void * src , size_t n ) {
     memcpy( dst , src , n );
   }
@@ -105,7 +107,7 @@ struct DeepCopy<MpiShmemSpace,HostSpace,ExecutionSpace> {
 };
 
 template<class ExecutionSpace>
-struct DeepCopy<HostSpace,MpiShmemSpace,ExecutionSpace> {
+struct DeepCopy<HostSpace,Experimental::MpiShmemSpace,ExecutionSpace> {
   DeepCopy( void * dst , const void * src , size_t n ) {
     memcpy( dst , src , n );
   }
@@ -116,7 +118,7 @@ struct DeepCopy<HostSpace,MpiShmemSpace,ExecutionSpace> {
 };
 
 template<class ExecutionSpace>
-struct DeepCopy<MpiShmemSpace,MpiShmemSpace,ExecutionSpace> {
+struct DeepCopy<Experimental::MpiShmemSpace,Experimental::MpiShmemSpace,ExecutionSpace> {
   DeepCopy( void * dst , const void * src , size_t n ) {
     memcpy( dst , src , n );
   }
@@ -137,7 +139,7 @@ namespace Impl {
 
 /** Running in MpiShmemSpace attempting to access HostSpace: ok */
 template<>
-struct VerifyExecutionCanAccessMemorySpace< Kokkos::MpiShmemSpace , Kokkos::HostSpace >
+struct VerifyExecutionCanAccessMemorySpace< Kokkos::Experimental::MpiShmemSpace , Kokkos::HostSpace >
 {
   enum { value = true };
   inline static void verify( void ) {}
@@ -145,7 +147,7 @@ struct VerifyExecutionCanAccessMemorySpace< Kokkos::MpiShmemSpace , Kokkos::Host
 };
 
 template<>
-struct VerifyExecutionCanAccessMemorySpace< Kokkos::HostSpace , Kokkos::MpiShmemSpace >
+struct VerifyExecutionCanAccessMemorySpace< Kokkos::HostSpace , Kokkos::Experimental::MpiShmemSpace >
 {
   enum { value = true };
   inline static void verify( void ) { }
@@ -157,6 +159,70 @@ struct VerifyExecutionCanAccessMemorySpace< Kokkos::HostSpace , Kokkos::MpiShmem
 
 //----------------------------------------------------------------------------
 //----------------------------------------------------------------------------
+
+namespace Kokkos {
+namespace Experimental {
+namespace Impl {
+
+template<>
+class SharedAllocationRecord< Kokkos::Experimental::MpiShmemSpace , void >
+  : public SharedAllocationRecord< void , void >
+{
+private:
+  typedef SharedAllocationRecord< void , void >  RecordBase ;
+
+  SharedAllocationRecord( const SharedAllocationRecord & ) = delete ;
+  SharedAllocationRecord & operator = ( const SharedAllocationRecord & ) = delete ;
+
+  static void deallocate( RecordBase * );
+
+  static RecordBase s_root_record ;
+
+  MPI_Win                 m_win ;
+  const Kokkos::Experimental::MpiShmemSpace m_space ;
+
+protected:
+
+  ~SharedAllocationRecord();
+  SharedAllocationRecord() : RecordBase(), m_win(MPI_WIN_NULL), m_space() {}
+
+  SharedAllocationRecord( const Kokkos::Experimental::MpiShmemSpace & arg_space
+                        , const std::string              & arg_label
+                        , const size_t                     arg_alloc_size
+                        , const RecordBase::function_type  arg_dealloc = & deallocate
+                        );
+
+public:
+
+  std::string get_label() const ;
+
+  static SharedAllocationRecord * allocate( const Kokkos::Experimental::MpiShmemSpace &  arg_space
+                                          , const std::string       &  arg_label
+                                          , const size_t               arg_alloc_size );
+
+  /**\brief  Allocate tracked memory in the space */
+  static
+  void * allocate_tracked( const Kokkos::Experimental::MpiShmemSpace & arg_space
+                         , const std::string & arg_label
+                         , const size_t arg_alloc_size );
+
+  /**\brief  Reallocate tracked memory in the space */
+  static
+  void * reallocate_tracked( void * const arg_alloc_ptr
+                           , const size_t arg_alloc_size );
+
+  /**\brief  Deallocate tracked memory in the space */
+  static
+  void deallocate_tracked( void * const arg_alloc_ptr );
+
+  static SharedAllocationRecord * get_record( void * arg_alloc_ptr );
+
+  static void print_records( std::ostream & , const Kokkos::MpiShmemSpace & , bool detail = false );
+};
+
+} // namespace Impl
+} // namespace Experimental
+} // namespace Kokkos
 
 #endif /* #if defined( KOKKOS_HAVE_MPISHMEM ) */
 #endif /* #define KOKKOS_MPISHMEMSPACE_HPP */
