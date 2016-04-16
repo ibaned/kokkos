@@ -80,7 +80,7 @@ namespace Kokkos {
 /// parallel_reduce.  For example, the Threads execution space uses Pthreads or
 /// C++11 threads on a CPU, the OpenMP execution space uses the OpenMP language
 /// extensions, and the Serial execution space executes "parallel" kernels
-/// sequentially.  The Cuda execution space uses MPI's
+/// sequentially.  The MpiShmem execution space uses MPI's
 /// shared memory communicator splitting to execute kernels across MPI
 /// ranks on the same CPU.
 class MpiShmem {
