@@ -233,7 +233,7 @@ void
 SharedAllocationRecord< Kokkos::MpiShmemSpace , void >::
 print_records( std::ostream & s , const Kokkos::MpiShmemSpace & space , bool detail )
 {
-  SharedAllocationRecord< void , void >::print_host_accessible_records( s , "MpiShmemUVM" , & s_root_record , detail );
+  SharedAllocationRecord< void , void >::print_host_accessible_records( s , "MpiShmem" , & s_root_record , detail );
 }
 
 } // namespace Impl
