@@ -63,14 +63,17 @@
 /*--------------------------------------------------------------------------*/
 
 namespace Kokkos {
+namespace Experimental {
 namespace Impl {
 class MpiShmemExec ;
 } // namespace Impl
+} // namespace Experimental
 } // namespace Kokkos
 
 /*--------------------------------------------------------------------------*/
 
 namespace Kokkos {
+namespace Experimental {
 
 /// \class MpiShmem
 /// \brief Kokkos Execution Space that uses MPI shared memory communicators.
@@ -174,6 +177,7 @@ public:
   //--------------------------------------------------------------------------
 };
 
+} // namespace Experimental
 } // namespace Kokkos
 
 /*--------------------------------------------------------------------------*/
@@ -184,8 +188,8 @@ namespace Impl {
 
 template<>
 struct VerifyExecutionCanAccessMemorySpace
-  < Kokkos::MpiShmemSpace
-  , Kokkos::MpiShmem::scratch_memory_space
+  < Kokkos::Experimental::MpiShmemSpace
+  , Kokkos::Experimental::MpiShmem::scratch_memory_space
   >
 {
   enum { value = true };
@@ -196,7 +200,7 @@ struct VerifyExecutionCanAccessMemorySpace
 template<>
 struct VerifyExecutionCanAccessMemorySpace
   < Kokkos::HostSpace
-  , Kokkos::MpiShmem::scratch_memory_space
+  , Kokkos::Experimental::MpiShmem::scratch_memory_space
   >
 {
   enum { value = true };
