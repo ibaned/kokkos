@@ -39,7 +39,7 @@ KOKKOS_INTERNAL_CUDA_USE_LAMBDA := $(strip $(shell echo $(KOKKOS_CUDA_OPTIONS) |
 # Check for Kokkos Host Execution Spaces one of which must be on
 
 KOKKOS_INTERNAL_USE_OPENMP := $(strip $(shell echo $(KOKKOS_DEVICES) | grep OpenMP | wc -l))
-KOKKOS_INTERNAL_USE_MPI := $(strip $(shell echo $(KOKKOS_DEVICES) | grep MPI | wc -l))
+KOKKOS_INTERNAL_USE_MPISHMEM := $(strip $(shell echo $(KOKKOS_DEVICES) | grep MpiShmem | wc -l))
 KOKKOS_INTERNAL_USE_PTHREADS := $(strip $(shell echo $(KOKKOS_DEVICES) | grep Pthread | wc -l))
 KOKKOS_INTERNAL_USE_SERIAL := $(strip $(shell echo $(KOKKOS_DEVICES) | grep Serial | wc -l))
 KOKKOS_INTERNAL_USE_QTHREAD := $(strip $(shell echo $(KOKKOS_DEVICES) | grep Qthread | wc -l))
@@ -187,8 +187,8 @@ ifeq ($(KOKKOS_INTERNAL_USE_OPENMP), 1)
 	tmp := $(shell echo '\#define KOKKOS_HAVE_OPENMP 1' >> KokkosCore_config.tmp) 
 endif
 
-ifeq ($(KOKKOS_INTERNAL_USE_MPI), 1)
-	tmp := $(shell echo '\#define KOKKOS_HAVE_MPI 1' >> KokkosCore_config.tmp)
+ifeq ($(KOKKOS_INTERNAL_USE_MPISHMEM), 1)
+	tmp := $(shell echo '\#define KOKKOS_HAVE_MPISHMEM 1' >> KokkosCore_config.tmp)
 endif
 
 ifeq ($(KOKKOS_INTERNAL_USE_PTHREADS), 1)

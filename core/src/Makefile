@@ -49,9 +49,9 @@ ifeq ($(KOKKOS_INTERNAL_USE_OPENMP), 1)
 	CONDITIONAL_COPIES += copy-openmp
 endif
 
-ifeq ($(KOKKOS_INTERNAL_USE_MPI), 1)
-	KOKKOS_HEADERS_OPENMP += $(wildcard $(KOKKOS_PATH)/core/src/MPI/*.hpp)
-	CONDITIONAL_COPIES += copy-mpi
+ifeq ($(KOKKOS_INTERNAL_USE_MPISHMEM), 1)
+	KOKKOS_HEADERS_MPISHMEM += $(wildcard $(KOKKOS_PATH)/core/src/MpiShmem/*.hpp)
+	CONDITIONAL_COPIES += copy-mpishmem
 endif
 
 messages: 
@@ -117,9 +117,9 @@ copy-openmp: mkdir
 	mkdir -p $(PREFIX)/include/OpenMP
 	cp $(KOKKOS_HEADERS_OPENMP) $(PREFIX)/include/OpenMP
 
-copy-mpi: mkdir
-	mkdir -p $(PREFIX)/include/MPI
-	cp $(KOKKOS_HEADERS_MPI) $(PREFIX)/include/MPI
+copy-mpishmem: mkdir
+	mkdir -p $(PREFIX)/include/MpiShmem
+	cp $(KOKKOS_HEADERS_MPI) $(PREFIX)/include/MpiShmem
 
 install: mkdir $(CONDITIONAL_COPIES) build-lib 
 	cp $(NVCC_WRAPPER) $(PREFIX)/bin
