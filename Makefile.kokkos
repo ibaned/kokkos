@@ -443,6 +443,11 @@ ifeq ($(KOKKOS_INTERNAL_USE_OPENMP), 1)
 	KOKKOS_LDFLAGS += $(KOKKOS_INTERNAL_OPENMP_FLAG)
 endif
 
+ifeq ($(KOKKOS_INTERNAL_USE_MPISHMEM), 1)
+	KOKKOS_SRC += $(wildcard $(KOKKOS_PATH)/core/src/MpiShmem/*.cpp)
+	KOKKOS_HEADERS += $(wildcard $(KOKKOS_PATH)/core/src/MpiShmem/*.hpp)
+endif
+
 #With Cygwin functions such as fdopen and fileno are not defined 
 #when strict ansi is enabled. strict ansi gets enabled with --std=c++11
 #though. So we hard undefine it here. Not sure if that has any bad side effects
