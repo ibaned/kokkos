@@ -53,6 +53,7 @@
 /*--------------------------------------------------------------------------*/
 
 namespace Kokkos {
+namespace Experimental {
 
 MpiShmemSpace::MpiShmemSpace()
 {
@@ -63,7 +64,6 @@ void * MpiShmemSpace::allocate( const size_t total_data_size,
                               , MPI_Win* win ) const
 {
   void * ptr = NULL;
-
   size_t team_size = static_cast<size_t>(MpiShmem::team_size());
   size_t team_rank = static_cast<size_t>(MpiShmem::team_size());
   size_t quot = total_data_size / team_size;
@@ -73,14 +73,12 @@ void * MpiShmemSpace::allocate( const size_t total_data_size,
     local_size++;
   if (team_rank == 0)
     local_size += header_size;
-
-  MPI_Win_allocate_shared(local_size,
-                          sizeof(size_type),
-                          MPI_INFO_NULL,
-                          MpiShmem::team_comm(),
-                          &ptr,
-                          win);
-
+  MPI_Win_allocate_shared(local_size
+                         ,sizeof(size_type)
+                         ,MPI_INFO_NULL
+                         ,MpiShmem::team_comm()
+                         ,&ptr
+                         ,win);
   return ptr ;
 }
 
@@ -89,6 +87,7 @@ void MpiShmemSpace::deallocate( void * const arg_alloc_ptr , const size_t /* arg
   MPI_Free_mem(arg_alloc_ptr);
 }
 
+} // namespace Experimental
 } // namespace Kokkos
 
 //----------------------------------------------------------------------------
