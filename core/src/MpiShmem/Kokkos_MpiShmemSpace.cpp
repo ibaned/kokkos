@@ -217,13 +217,13 @@ SharedAllocationRecord< Kokkos::MpiShmemSpace , void > *
 SharedAllocationRecord< Kokkos::MpiShmemSpace , void >::get_record( void * alloc_ptr )
 {
   typedef SharedAllocationHeader  Header ;
-  typedef SharedAllocationRecord< Kokkos::HostSpace , void >  RecordHost ;
+  typedef SharedAllocationRecord< Kokkos::MpiShmemSpace , void >  RecordHost ;
 
   SharedAllocationHeader const * const head   = alloc_ptr ? Header::get_header( alloc_ptr ) : (SharedAllocationHeader *)0 ;
   RecordHost                   * const record = head ? static_cast< RecordHost * >( head->m_record ) : (RecordHost *) 0 ;
 
   if ( ! alloc_ptr || record->m_alloc_ptr != head ) {
-    Kokkos::Impl::throw_runtime_exception( std::string("Kokkos::Experimental::Impl::SharedAllocationRecord< Kokkos::HostSpace , void >::get_record ERROR" ) );
+    Kokkos::Impl::throw_runtime_exception( std::string("Kokkos::Experimental::Impl::SharedAllocationRecord< Kokkos::MpiShmemSpace , void >::get_record ERROR" ) );
   }
 
   return record ;
