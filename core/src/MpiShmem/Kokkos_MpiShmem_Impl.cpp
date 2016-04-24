@@ -85,7 +85,8 @@ public:
     return m_world != MPI_COMM_NULL && m_team != MPI_COMM_NULL;
   }
 
-  void initialize( int& argc, char**& argv, MPI_Comm world, MPI_Comm team );
+  void initialize( int& argc, char**& argv );
+  void initialize( MPI_Comm world, MPI_Comm team );
   void finalize();
 
   void print_configuration( std::ostream & ) const ;
@@ -116,6 +117,11 @@ void MpiShmemInternal::initialize( int& argc, char**& argv,
     MPI_Init(&argc,&argv);
     m_called_mpi_init = true;
   }
+  initialize( MPI_COMM_WORLD, MPI_COMM_NULL );
+}
+
+void MpiShmemInternal::initialize( MPI_Comm world, MPI_Comm team )
+{
   m_world = world;
   if (team == MPI_COMM_NULL) {
     /* This splits the "world" communicator into subcommunicators,
@@ -164,6 +170,11 @@ int MpiShmem::concurrency()
 int MpiShmem::is_initialized()
 {
   return Impl::MpiShmemInternal::singleton().is_initialized();
+}
+
+static void MpiShmem::initialize( int& argc, char**& argv )
+{
+  Impl::MpiShmemInternal::singleton().initialize( argc, argv );
 }
 
 static void MpiShmem::initialize( MPI_Comm world_comm
