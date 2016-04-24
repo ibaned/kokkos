@@ -39,6 +39,7 @@ KOKKOS_INTERNAL_CUDA_USE_LAMBDA := $(strip $(shell echo $(KOKKOS_CUDA_OPTIONS) |
 # Check for Kokkos Host Execution Spaces one of which must be on
 
 KOKKOS_INTERNAL_USE_OPENMP := $(strip $(shell echo $(KOKKOS_DEVICES) | grep OpenMP | wc -l))
+KOKKOS_INTERNAL_USE_MPISHMEM := $(strip $(shell echo $(KOKKOS_DEVICES) | grep MpiShmem | wc -l))
 KOKKOS_INTERNAL_USE_PTHREADS := $(strip $(shell echo $(KOKKOS_DEVICES) | grep Pthread | wc -l))
 KOKKOS_INTERNAL_USE_SERIAL := $(strip $(shell echo $(KOKKOS_DEVICES) | grep Serial | wc -l))
 KOKKOS_INTERNAL_USE_QTHREAD := $(strip $(shell echo $(KOKKOS_DEVICES) | grep Qthread | wc -l))
@@ -184,6 +185,10 @@ tmp := $(shell echo "----------------------------------------------*/" >> Kokkos
 tmp := $(shell echo "/* Execution Spaces */" >> KokkosCore_config.tmp)
 ifeq ($(KOKKOS_INTERNAL_USE_OPENMP), 1)
 	tmp := $(shell echo '\#define KOKKOS_HAVE_OPENMP 1' >> KokkosCore_config.tmp) 
+endif
+
+ifeq ($(KOKKOS_INTERNAL_USE_MPISHMEM), 1)
+	tmp := $(shell echo '\#define KOKKOS_HAVE_MPISHMEM 1' >> KokkosCore_config.tmp)
 endif
 
 ifeq ($(KOKKOS_INTERNAL_USE_PTHREADS), 1)
@@ -436,6 +441,11 @@ ifeq ($(KOKKOS_INTERNAL_USE_OPENMP), 1)
 		KOKKOS_CXXFLAGS += $(KOKKOS_INTERNAL_OPENMP_FLAG)
 	endif
 	KOKKOS_LDFLAGS += $(KOKKOS_INTERNAL_OPENMP_FLAG)
+endif
+
+ifeq ($(KOKKOS_INTERNAL_USE_MPISHMEM), 1)
+	KOKKOS_SRC += $(wildcard $(KOKKOS_PATH)/core/src/MpiShmem/*.cpp)
+	KOKKOS_HEADERS += $(wildcard $(KOKKOS_PATH)/core/src/MpiShmem/*.hpp)
 endif
 
 #With Cygwin functions such as fdopen and fileno are not defined 

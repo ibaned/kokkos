@@ -97,6 +97,11 @@ class Threads ;  ///< Execution space with pthreads back-end
 class OpenMP ; ///< OpenMP execution space
 #endif
 
+#if defined( KOKKOS_HAVE_MPISHMEM )
+class MpiShmemSpace ; ///< Memory space for MPI shared memory
+class MpiShmem ;      ///< MPI shared memory execution space
+#endif
+
 #if defined( KOKKOS_HAVE_CUDA )
 class CudaSpace ;            ///< Memory space on Cuda GPU
 class CudaUVMSpace ;         ///< Memory space on Cuda GPU with UVM
@@ -124,6 +129,8 @@ namespace Kokkos {
   typedef OpenMP DefaultExecutionSpace ;
 #elif defined ( KOKKOS_HAVE_DEFAULT_DEVICE_TYPE_THREADS )
   typedef Threads DefaultExecutionSpace ;
+#elif defined ( KOKKOS_HAVE_DEFAULT_DEVICE_TYPE_MPISHMEM )
+  typedef MpiShmem DefaultExecutionSpace ;
 #elif defined ( KOKKOS_HAVE_DEFAULT_DEVICE_TYPE_SERIAL )
   typedef Serial DefaultExecutionSpace ;
 #else
@@ -140,6 +147,8 @@ namespace Kokkos {
   typedef OpenMP DefaultHostExecutionSpace ;
 #elif defined ( KOKKOS_HAVE_PTHREAD )
   typedef Threads DefaultHostExecutionSpace ;
+#elif defined ( KOKKOS_HAVE_MPISHMEM )
+  typedef MpiShmem DefaultHostExecutionSpace ;
 #elif defined ( KOKKOS_HAVE_SERIAL )
   typedef Serial DefaultHostExecutionSpace ;
 #else
@@ -160,7 +169,11 @@ namespace Impl {
 #if defined( KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_CUDA ) && defined (KOKKOS_HAVE_CUDA)
 typedef Kokkos::CudaSpace  ActiveExecutionMemorySpace ;
 #elif defined( KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST )
+#ifdef KOKKOS_HAVE_DEFAULT_DEVICE_TYPE_MPISHMEM
+typedef Kokkos::MpiShmemSpace  ActiveExecutionMemorySpace ;
+#else
 typedef Kokkos::HostSpace  ActiveExecutionMemorySpace ;
+#endif
 #else
 typedef void ActiveExecutionMemorySpace ;
 #endif

@@ -49,6 +49,11 @@ ifeq ($(KOKKOS_INTERNAL_USE_OPENMP), 1)
 	CONDITIONAL_COPIES += copy-openmp
 endif
 
+ifeq ($(KOKKOS_INTERNAL_USE_MPISHMEM), 1)
+	KOKKOS_HEADERS_MPISHMEM += $(wildcard $(KOKKOS_PATH)/core/src/MpiShmem/*.hpp)
+	CONDITIONAL_COPIES += copy-mpishmem
+endif
+
 messages: 
 	echo "Start Build"
 
@@ -111,6 +116,10 @@ copy-qthread: mkdir
 copy-openmp: mkdir
 	mkdir -p $(PREFIX)/include/OpenMP
 	cp $(KOKKOS_HEADERS_OPENMP) $(PREFIX)/include/OpenMP
+
+copy-mpishmem: mkdir
+	mkdir -p $(PREFIX)/include/MpiShmem
+	cp $(KOKKOS_HEADERS_MPI) $(PREFIX)/include/MpiShmem
 
 install: mkdir $(CONDITIONAL_COPIES) build-lib 
 	cp $(NVCC_WRAPPER) $(PREFIX)/bin
