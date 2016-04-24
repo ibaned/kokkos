@@ -85,7 +85,7 @@ public:
     return m_world != MPI_COMM_NULL && m_team != MPI_COMM_NULL;
   }
 
-  void initialize( MPI_Comm world, MPI_Comm team );
+  void initialize( int& argc, char**& argv, MPI_Comm world, MPI_Comm team );
   void finalize();
 
   void print_configuration( std::ostream & ) const ;
@@ -107,17 +107,24 @@ MpiShmemInternal & MpiShmemInternal::singleton()
   return self;
 }
 
-void MpiShmemInternal::initialize( MPI_Comm world, MPI_Comm team )
+void MpiShmemInternal::initialize( int& argc, char**& argv,
+    MPI_Comm world, MPI_Comm team )
 {
   int is_mpi_initialized;
   MPI_Initialized(&is_mpi_initialized);
   if (!is_mpi_initialized) {
-    MPI_Init(NULL,NULL);
+    MPI_Init(&argc,&argv);
     m_called_mpi_init = true;
   }
   m_world = world;
-  if (team == MPI_COMM_NULL)
+  if (team == MPI_COMM_NULL) {
+    /* This splits the "world" communicator into subcommunicators,
+       each of which contains processes that can create shared-memory
+       regions together.
+       Thus, this call lets MPI do the work of identifying the
+       process equivalent of "thread teams." */
     MPI_Comm_split_type(world, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL, &team);
+  }
   m_team = team;
 }
 

@@ -160,7 +160,8 @@ public:
   MpiShmem & operator = ( const MpiShmem & ) = default ;
 
   //! Initialize, telling the MPI run-time library which device to use.
-  static void initialize( MPI_Comm world_comm = MPI_COMM_WORLD
+  static void initialize( int& argc, char**& argv,
+                        , MPI_Comm world_comm = MPI_COMM_WORLD
                         , MPI_Comm team_comm = MPI_COMM_NULL );
 
   static MPI_Comm team_comm();
