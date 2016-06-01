@@ -161,9 +161,9 @@ private:
 public:
   ~Bitset() = default;
   Bitset() = default;
-  Bitset( Bitset && ) = default;
+//Bitset( Bitset && ) = default;
   Bitset( const Bitset & ) = default;
-  Bitset & operator = ( Bitset && ) = default;
+//Bitset & operator = ( Bitset && ) = default;
   Bitset & operator = ( const Bitset & ) = default;
 
   void init( void * w, size_type s )
@@ -654,9 +654,9 @@ public:
 
   ~MemoryPool() = default;
   MemoryPool() = default;
-  MemoryPool( MemoryPool && ) = default;
+//MemoryPool( MemoryPool && ) = default;
   MemoryPool( const MemoryPool & ) = default;
-  MemoryPool & operator = ( MemoryPool && ) = default;
+//MemoryPool & operator = ( MemoryPool && ) = default;
   MemoryPool & operator = ( const MemoryPool & ) = default;
 
   inline

@@ -256,7 +256,7 @@ public:
   void operator()(const int&) const {}
 
   RangePolicy(const RangePolicy&) = default;
-  RangePolicy(RangePolicy&&) = default;
+//RangePolicy(RangePolicy&&) = default;
 
   inline RangePolicy() : m_space(), m_begin(0), m_end(0) {}
 

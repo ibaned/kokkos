@@ -77,9 +77,9 @@ struct LayoutLeft {
   size_t dimension[ ARRAY_LAYOUT_MAX_RANK ];
 
   LayoutLeft( LayoutLeft const & ) = default ;
-  LayoutLeft( LayoutLeft && ) = default ;
+//LayoutLeft( LayoutLeft && ) = default ;
   LayoutLeft & operator = ( LayoutLeft const & ) = default ;
-  LayoutLeft & operator = ( LayoutLeft && ) = default ;
+//LayoutLeft & operator = ( LayoutLeft && ) = default ;
 
   KOKKOS_INLINE_FUNCTION
   constexpr
@@ -109,9 +109,9 @@ struct LayoutRight {
   size_t dimension[ ARRAY_LAYOUT_MAX_RANK ];
 
   LayoutRight( LayoutRight const & ) = default ;
-  LayoutRight( LayoutRight && ) = default ;
+//LayoutRight( LayoutRight && ) = default ;
   LayoutRight & operator = ( LayoutRight const & ) = default ;
-  LayoutRight & operator = ( LayoutRight && ) = default ;
+//LayoutRight & operator = ( LayoutRight && ) = default ;
 
   KOKKOS_INLINE_FUNCTION
   constexpr
@@ -215,9 +215,9 @@ struct LayoutTileLeft {
   size_t dimension[ ARRAY_LAYOUT_MAX_RANK ] ;
 
   LayoutTileLeft( LayoutTileLeft const & ) = default ;
-  LayoutTileLeft( LayoutTileLeft && ) = default ;
+//LayoutTileLeft( LayoutTileLeft && ) = default ;
   LayoutTileLeft & operator = ( LayoutTileLeft const & ) = default ;
-  LayoutTileLeft & operator = ( LayoutTileLeft && ) = default ;
+//LayoutTileLeft & operator = ( LayoutTileLeft && ) = default ;
 
   KOKKOS_INLINE_FUNCTION
   constexpr
