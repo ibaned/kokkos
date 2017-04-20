@@ -69,7 +69,7 @@ struct TestFunctor {
   MemoryPool  pool ;
   ptrs_type   ptrs ;
   unsigned    stride_chunk ;
-  unsigned    stride_alloc ;
+  unsigned    fill_stride ;
   unsigned    range_iter ;
   unsigned    repeat ;
 
@@ -82,7 +82,7 @@ struct TestFunctor {
     : pool()
     , ptrs()
     , stride_chunk(0)
-    , stride_alloc(0)
+    , fill_stride(0)
     , repeat(0)
     {
       MemorySpace m ;
@@ -106,9 +106,9 @@ struct TestFunctor {
 #endif
 
       ptrs = ptrs_type( Kokkos::view_alloc( m , "ptrs") , number_alloc );
-      stride_alloc = arg_stride_alloc ;
+      fill_stride = arg_stride_alloc ;
       stride_chunk = arg_stride_chunk ;
-      range_iter   = stride_alloc * number_alloc ;
+      range_iter   = fill_stride * number_alloc ;
       repeat       = arg_repeat ;
     }
 
@@ -123,9 +123,9 @@ struct TestFunctor {
   KOKKOS_INLINE_FUNCTION
   void operator()( TagFill , int i , value_type & update ) const noexcept
     {
-      if ( 0 == i % stride_alloc ) {
+      if ( 0 == i % fill_stride ) {
 
-        const int j = i / stride_alloc ;
+        const int j = i / fill_stride ;
 
         const unsigned size_alloc = chunk * ( 1 + ( j % stride_chunk ) );
 
@@ -153,9 +153,9 @@ struct TestFunctor {
   KOKKOS_INLINE_FUNCTION
   void operator()( TagDel , int i ) const noexcept
     {
-      if ( 0 == i % stride_alloc ) {
+      if ( 0 == i % fill_stride ) {
 
-        const int j = i / stride_alloc ;
+        const int j = i / fill_stride ;
 
         const unsigned size_alloc = chunk * ( 1 + ( j % stride_chunk ) );
 
@@ -177,9 +177,9 @@ struct TestFunctor {
   KOKKOS_INLINE_FUNCTION
   void operator()( TagAllocDealloc , int i , long & update ) const noexcept
     {
-      if ( 0 == i % stride_alloc ) {
+      if ( 0 == i % fill_stride ) {
 
-        const int j = i / stride_alloc ;
+        const int j = i / fill_stride ;
 
         if ( 0 == j % 3 ) {
 
@@ -213,22 +213,22 @@ struct TestFunctor {
 
 int main( int argc , char* argv[] )
 {
-  static const char help[] = "--help" ;
-  static const char alloc_size[]   = "--alloc_size=" ;
-  static const char super_size[]   = "--super_size=" ;
-  static const char chunk_span[]   = "--chunk_span=" ;
-  static const char fill_stride[]  = "--fill_stride=" ;
-  static const char fill_level[]   = "--fill_level=" ;
-  static const char repeat_outer[] = "--repeat_outer=" ;
-  static const char repeat_inner[] = "--repeat_inner=" ;
+  static const char help_flag[] = "--help" ;
+  static const char alloc_size_flag[]   = "--alloc_size=" ;
+  static const char super_size_flag[]   = "--super_size=" ;
+  static const char chunk_span_flag[]   = "--chunk_span=" ;
+  static const char fill_stride_flag[]  = "--fill_stride=" ;
+  static const char fill_level_flag[]   = "--fill_level=" ;
+  static const char repeat_outer_flag[] = "--repeat_outer=" ;
+  static const char repeat_inner_flag[] = "--repeat_inner=" ;
 
   long total_alloc_size    = 1000000 ;
   int  min_superblock_size =   10000 ;
-  int  span_chunk          =       5 ;
-  int  stride_alloc        =       1 ;
-  int  level_alloc         =      70 ;
-  int  test_repeat_outer   =       1 ;
-  int  test_repeat_inner   =       1 ;
+  int  chunk_span          =       5 ;
+  int  fill_stride        =       1 ;
+  int  fill_level         =      70 ;
+  int  repeat_outer   =       1 ;
+  int  repeat_inner   =       1 ;
 
   int  ask_help = 0 ;
 
@@ -236,32 +236,32 @@ int main( int argc , char* argv[] )
   {
      const char * const a = argv[i];
 
-     if ( ! strncmp(a,help,strlen(help) ) ) ask_help = 1 ;
+     if ( ! strncmp(a,help_flag,strlen(help_flag) ) ) ask_help = 1 ;
 
-     if ( ! strncmp(a,alloc_size,strlen(alloc_size) ) )
-       total_alloc_size = atol( a + strlen(alloc_size) );
+     if ( ! strncmp(a,alloc_size_flag,strlen(alloc_size_flag) ) )
+       total_alloc_size = atol( a + strlen(alloc_size_flag) );
 
-     if ( ! strncmp(a,super_size,strlen(super_size) ) )
-       min_superblock_size = atoi( a + strlen(super_size) );
+     if ( ! strncmp(a,super_size_flag,strlen(super_size_flag) ) )
+       min_superblock_size = atoi( a + strlen(super_size_flag) );
 
-     if ( ! strncmp(a,fill_stride,strlen(fill_stride) ) )
-       stride_alloc = atoi( a + strlen(fill_stride) );
+     if ( ! strncmp(a,fill_stride_flag,strlen(fill_stride_flag) ) )
+       fill_stride = atoi( a + strlen(fill_stride_flag) );
 
-     if ( ! strncmp(a,fill_level,strlen(fill_level) ) )
-       level_alloc = atoi( a + strlen(fill_level) );
+     if ( ! strncmp(a,fill_level_flag,strlen(fill_level_flag) ) )
+       fill_level = atoi( a + strlen(fill_level_flag) );
 
-     if ( ! strncmp(a,chunk_span,strlen(chunk_span) ) )
-       span_chunk = atoi( a + strlen(chunk_span) );
+     if ( ! strncmp(a,chunk_span_flag,strlen(chunk_span_flag) ) )
+       chunk_span = atoi( a + strlen(chunk_span_flag) );
 
-     if ( ! strncmp(a,repeat_outer,strlen(repeat_outer) ) )
-       test_repeat_outer = atoi( a + strlen(repeat_outer) );
+     if ( ! strncmp(a,repeat_outer_flag,strlen(repeat_outer_flag) ) )
+       repeat_outer = atoi( a + strlen(repeat_outer_flag) );
 
-     if ( ! strncmp(a,repeat_inner,strlen(repeat_inner) ) )
-       test_repeat_inner = atoi( a + strlen(repeat_inner) );
+     if ( ! strncmp(a,repeat_inner_flag,strlen(repeat_inner_flag) ) )
+       repeat_inner = atoi( a + strlen(repeat_inner_flag) );
   }
 
-  const int mean_chunk   = TestFunctor::chunk * ( 1 + ( span_chunk / 2 ) );
-  const int number_alloc = double(total_alloc_size) * double(level_alloc) /
+  const int mean_chunk   = TestFunctor::chunk * ( 1 + ( chunk_span / 2 ) );
+  const int number_alloc = double(total_alloc_size) * double(fill_level) /
                            ( double(mean_chunk) * double(100) );
 
   double time = 0 ;
@@ -270,14 +270,14 @@ int main( int argc , char* argv[] )
 
   if ( ask_help ) {
     std::cout << "command line options:"
-              << " " << help
-              << " " << alloc_size << "##"
-              << " " << super_size << "##"
-              << " " << fill_stride << "##"
-              << " " << fill_level << "##"
-              << " " << chunk_span << "##"
-              << " " << repeat_outer << "##"
-              << " " << repeat_inner << "##"
+              << " " << help_flag
+              << " " << alloc_size_flag << "##"
+              << " " << super_size_flag << "##"
+              << " " << fill_stride_flag << "##"
+              << " " << fill_level_flag << "##"
+              << " " << chunk_span_flag << "##"
+              << " " << repeat_outer_flag << "##"
+              << " " << repeat_inner_flag << "##"
               << std::endl ;
   }
   else {
@@ -287,9 +287,9 @@ int main( int argc , char* argv[] )
     TestFunctor functor( total_alloc_size
                        , min_superblock_size
                        , number_alloc
-                       , stride_alloc
-                       , span_chunk
-                       , test_repeat_inner );
+                       , fill_stride
+                       , chunk_span
+                       , repeat_inner );
 
     if ( ! functor.test_fill() ) {
       Kokkos::abort("  fill failed");
@@ -297,7 +297,7 @@ int main( int argc , char* argv[] )
 
     Kokkos::Impl::Timer timer ;
 
-    for ( int i = 0 ; i < test_repeat_outer ; ++i ) {
+    for ( int i = 0 ; i < repeat_outer ; ++i ) {
       error |= ! functor.test_alloc_dealloc();
     }
 
@@ -309,11 +309,11 @@ int main( int argc , char* argv[] )
   printf( "\"mempool: alloc super stride level span inner outer number time\" %ld %d %d %d %d %d %d %d %f\n"
         , total_alloc_size
         , min_superblock_size
-        , stride_alloc
-        , level_alloc
-        , span_chunk
-        , test_repeat_inner
-        , test_repeat_outer
+        , fill_stride
+        , fill_level
+        , chunk_span
+        , repeat_inner
+        , repeat_outer
         , number_alloc
         , time );
 
