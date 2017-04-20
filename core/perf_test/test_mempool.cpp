@@ -64,7 +64,7 @@ struct TestFunctor {
 
   typedef Kokkos::View< uintptr_t * , ExecSpace >  ptrs_type ;
 
-  enum : unsigned { chunk = 32 };
+  enum : unsigned { chunk = 64 };
 
   MemoryPool  pool ;
   ptrs_type   ptrs ;
