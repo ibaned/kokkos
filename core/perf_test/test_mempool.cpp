@@ -98,6 +98,20 @@ struct TestFunctor {
       repeat       = arg_repeat ;
     }
 
+  void print_on_fail() {
+    pool.print_state(std::cerr);
+    typename decltype(pool)::usage_statistics stats;
+    pool.get_usage_statistics(stats);
+    std::cerr << "capacity bytes " << stats.capacity_bytes << '\n';
+    std::cerr << "superblock bytes " << stats.superblock_bytes << '\n';
+    std::cerr << "capacity superblocks " << stats.capacity_superblocks << '\n';
+    std::cerr << "consumed superblocks " << stats.consumed_superblocks << '\n';
+    std::cerr << "consumed blocks " << stats.consumed_blocks << '\n';
+    std::cerr << "consumed bytes " << stats.consumed_bytes << '\n';
+    std::cerr << "reserved blocks " << stats.reserved_blocks << '\n';
+    std::cerr << "reserved bytes " << stats.reserved_bytes << '\n';
+  }
+
   //----------------------------------------
 
   typedef long value_type ;
@@ -118,6 +132,7 @@ struct TestFunctor {
         ptrs(j) = (uintptr_t) pool.allocate(size_alloc);
 
         if ( ptrs(j) ) ++update ;
+        else printf("i = %d failed, update = %ld\n", i, update);
       }
     }
 
@@ -129,7 +144,10 @@ struct TestFunctor {
 
       Kokkos::parallel_reduce( policy(0,range_iter), *this , result );
 
-      return result == ptrs.extent(0);
+      if (result == ptrs.extent(0)) return true;
+      std::cerr << "# successful results " << result << " / " << ptrs.extent(0) << '\n';
+      print_on_fail();
+      return false;
     }
 
   //----------------------------------------
@@ -191,7 +209,9 @@ struct TestFunctor {
 
       Kokkos::parallel_reduce( policy(0,range_iter), *this , error_count );
 
-      return 0 == error_count ;
+      if (0 == error_count) return true;
+      print_on_fail();
+      return false;
     }
 };
 
@@ -270,6 +290,7 @@ int main( int argc , char* argv[] )
 
     Kokkos::initialize(argc,argv);
 
+    std::cerr << "number_alloc " << number_alloc << '\n';
     TestFunctor functor( total_alloc_size
                        , min_superblock_size
                        , number_alloc
