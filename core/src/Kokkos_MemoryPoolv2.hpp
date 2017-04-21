@@ -391,6 +391,8 @@ public:
 
       void * p = 0 ;
 
+      *debug_state = 0;
+
       if ( alloc_size <= (1UL << m_sb_size_lg2) ) {
         *debug_state |= DEBUG_BLOCK_FITS_ANY_SUPERBLOCK;
 
