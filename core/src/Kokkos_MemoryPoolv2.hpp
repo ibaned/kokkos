@@ -52,26 +52,26 @@
 #include <impl/Kokkos_SharedAlloc.hpp>
 
 enum debug_enum : uint64_t {
-  DEBUG_BLOCK_FITS_ANY_SUPERBLOCK   = 0x00001,
-  DEBUG_PREFETCHING_LOOP            = 0x00002,
-  DEBUG_PREEMPTED_PREFETCHING       = 0x00004,
-  DEBUG_FOUND_PARTFULL              = 0x00008,
-  DEBUG_ITERATED_PARTFULL_SEARCH    = 0x00010,
-  DEBUG_WRAPPED_PARTFULL_SEARCH     = 0x00020,
-  DEBUG_TRY_UPDATE_HINT             = 0x00040,
-  DEBUG_HINT_FOUND_LOCKED_PARTFULL  = 0x00080,
-  DEBUG_LOCKED_HINT                 = 0x00100,
-  DEBUG_UNLOCKED_HINT               = 0x00200,
-  DEBUG_CLAIMED_EMPTY               = 0x00400,
-  DEBUG_FAILED                      = 0x00800,
-  DEBUG_HINT_FOUND_LOCKED_EMPTY     = 0x01000,
-  DEBUG_RELIEVED_OF_EMPTY           = 0x02000,
-  DEBUG_ACQUIRED_BIT                = 0x04000,
-  DEBUG_NOT_ASSIGNED_PREFETCH       = 0x08000,
-  DEBUG_LOSER                       = 0x10000,
-  DEBUG_TRIED_ACQUIRING_BIT         = 0x20000,
-  DEBUG_ITERATED_EMPTY_SEARCH       = 0x40000,
-  DEBUG_WRAPPED_EMPTY_SEARCH        = 0x80000,
+  DEBUG_BLOCK_FITS_ANY_SUPERBLOCK   = 1 <<  1,
+  DEBUG_PREFETCHING_LOOP            = 1 <<  2,
+  DEBUG_PREEMPTED_PREFETCHING       = 1 <<  3,
+  DEBUG_FOUND_PARTFULL              = 1 <<  4,
+  DEBUG_ITERATED_PARTFULL_SEARCH    = 1 <<  5,
+  DEBUG_WRAPPED_PARTFULL_SEARCH     = 1 <<  6,
+  DEBUG_TRY_UPDATE_HINT             = 1 <<  7,
+  DEBUG_HINT_FOUND_LOCKED_PARTFULL  = 1 <<  8,
+  DEBUG_LOCKED_HINT                 = 1 <<  9,
+  DEBUG_UNLOCKED_HINT               = 1 << 10,
+  DEBUG_CLAIMED_EMPTY               = 1 << 11,
+  DEBUG_FAILED                      = 1 << 12,
+  DEBUG_HINT_FOUND_LOCKED_EMPTY     = 1 << 13,
+  DEBUG_RELIEVED_OF_EMPTY           = 1 << 14,
+  DEBUG_ACQUIRED_BIT                = 1 << 15,
+  DEBUG_NOT_ASSIGNED_PREFETCH       = 1 << 16,
+  DEBUG_LOSER                       = 1 << 17,
+  DEBUG_TRIED_ACQUIRING_BIT         = 1 << 18,
+  DEBUG_ITERATED_EMPTY_SEARCH       = 1 << 19,
+  DEBUG_WRAPPED_EMPTY_SEARCH        = 1 << 20,
 };
 
 namespace Kokkos {
@@ -553,7 +553,7 @@ public:
             *debug_state |= DEBUG_LOCKED_HINT;
           //printf("no partfull, look for empty\n");
 
-            // This thread locked then hint
+            // This thread locked the hint
 
             const uint32_t claim_state = block_count_lg2 << state_shift ;
 

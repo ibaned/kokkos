@@ -44,6 +44,7 @@
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
+#include <map>
 
 #include <Kokkos_Core.hpp>
 #include <impl/Kokkos_Timer.hpp>
@@ -59,6 +60,69 @@ Kokkos::Experimental::MemoryPoolv2< ExecSpace > ;
 #else
 Kokkos::Experimental::MemoryPool< ExecSpace > ;
 #endif
+
+static void print_debug_code(uint64_t code) {
+  if (!(code & DEBUG_BLOCK_FITS_ANY_SUPERBLOCK)) {
+    std::cerr << "DIDNT FIT????\n";
+  }
+  if (code & DEBUG_PREFETCHING_LOOP) {
+    std::cerr << "looped back around while(1) for prefetch\n";
+  }
+  if (code & DEBUG_PREEMPTED_PREFETCHING) {
+    std::cerr << "was preempted while prefetching\n";
+  }
+  if (code & DEBUG_FOUND_PARTFULL) {
+    std::cerr << "found a partfull superblock\n";
+  }
+  if (code & DEBUG_ITERATED_PARTFULL_SEARCH) {
+    std::cerr << "searched more than one superblock for partfull\n";
+  }
+  if (code & DEBUG_WRAPPED_PARTFULL_SEARCH) {
+    std::cerr << "wrapped around the superblocks for partfull\n";
+  }
+  if (code & DEBUG_TRY_UPDATE_HINT) {
+    std::cerr << "tried to update the hint via CAS\n";
+  }
+  if (code & DEBUG_HINT_FOUND_LOCKED_PARTFULL) {
+    std::cerr << "hint found locked when searching for partfull\n";
+  }
+  if (code & DEBUG_LOCKED_HINT) {
+    std::cerr << "locked the hint\n";
+  }
+  if (code & DEBUG_UNLOCKED_HINT) {
+    std::cerr << "unlocked the hint\n";
+  }
+  if (code & DEBUG_CLAIMED_EMPTY) {
+    std::cerr << "claimed an empty superblock\n";
+  }
+  if (code & DEBUG_FAILED) {
+    std::cerr << "allocate() failed !\n";
+  }
+  if (code & DEBUG_HINT_FOUND_LOCKED_EMPTY) {
+    std::cerr << "hint found locked when searching for empty\n";
+  }
+  if (code & DEBUG_RELIEVED_OF_EMPTY) {
+    std::cerr << "relieved of previously assigned find-empty duty (someone else locked)\n";
+  }
+  if (code & DEBUG_TRIED_ACQUIRING_BIT) {
+    std::cerr << "tried to acquire a bitset bit\n";
+  }
+  if (code & DEBUG_ACQUIRED_BIT) {
+    std::cerr << "acquired a bitset bit\n";
+  }
+  if (!(code & DEBUG_NOT_ASSIGNED_PREFETCH)) {
+    std::cerr << "assigned prefetch duty after acquiring a bit\n";
+  }
+  if (code & DEBUG_LOSER) {
+    std::cerr << "is a loser. either lost a race for a bit or assigned to prefetch.\n";
+  }
+  if (code & DEBUG_ITERATED_EMPTY_SEARCH) {
+    std::cerr << "searched more than one superblock for empty\n";
+  }
+  if (code & DEBUG_WRAPPED_EMPTY_SEARCH) {
+    std::cerr << "wrapped around the superblocks for empty\n";
+  }
+}
 
 struct TestFunctor {
 
@@ -150,9 +214,29 @@ struct TestFunctor {
 
       Kokkos::parallel_reduce( policy(0,range_iter), *this , result );
 
+      // if all is well just return
       if (result == ptrs.extent(0)) return true;
+
+      // otherwise print tons of debug information
       std::cerr << "# successful results " << result << " / " << ptrs.extent(0) << '\n';
       print_on_fail();
+      auto h_debugs = Kokkos::create_mirror_view(debugs);
+      Kokkos::deep_copy(h_debugs, debugs);
+      std::map<uint64_t, size_t> unique_codes_and_reps;
+      for (size_t i = 0; i < h_debugs.size(); ++i) {
+        auto code = h_debugs(i);
+        if (!unique_codes_and_reps.count(code)) {
+          unique_codes_and_reps[code] = i;
+        }
+      }
+      for (auto pair : unique_codes_and_reps) {
+        auto code = pair.first;
+        auto i = pair.second;
+        std::cerr << "i = " << i << " had these debug traits:\n";
+        print_debug_code(code);
+      }
+      std::cerr << "END DEBUG TRAITS\n";
+
       return false;
     }
 
@@ -330,7 +414,7 @@ int main( int argc , char* argv[] )
         , number_alloc
         , time );
 
-  if ( error ) { printf("  TEST FAILED\n"); }
+  if ( error ) { fprintf(stderr,"  TEST FAILED\n"); }
 
   return 0 ;
 }
