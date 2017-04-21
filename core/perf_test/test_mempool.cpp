@@ -254,7 +254,7 @@ struct TestFunctor {
         auto code = pair.first;
         auto i = pair.second;
         std::cerr << "i = " << i << " had these debug traits: "
-          << std::hex << code << '\n';
+          << std::hex << code << std::dec << '\n';
         print_debug_code(code);
       }
       std::cerr << "END DEBUG TRAITS\n";

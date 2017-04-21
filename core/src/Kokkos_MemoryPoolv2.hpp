@@ -619,16 +619,18 @@ public:
                 //  Iterating on this slim chance is a performance penalty
                 //  with use case dependent probability of success.
 
-                printf("no empty, fail.\nthreadIdx.x %d threadIdx.y %d blockDim.x %d blockDim.y %d\n",
-                    threadIdx.x, threadIdx.y, blockDim.x, blockDim.y);
+              //printf("no empty, fail.\nthreadIdx.x %d threadIdx.y %d blockDim.x %d blockDim.y %d\n",
+              //    threadIdx.x, threadIdx.y, blockDim.x, blockDim.y);
+                
+                // don't give up ! there is always hope !
 
-                if ( 0 < retry_limit ) {
-                  --retry_limit ;
+              //if ( 0 < retry_limit ) {
+              //  --retry_limit ;
                   continue ;
-                }
-                else {
-                  break ;
-                }
+              //}
+              //else {
+              //  break ;
+              //}
               } else {
                 *debug_state |= DEBUG_FOUND_EMPTY; 
               }
