@@ -63,11 +63,13 @@ Kokkos::Experimental::MemoryPool< ExecSpace > ;
 struct TestFunctor {
 
   typedef Kokkos::View< uintptr_t * , ExecSpace >  ptrs_type ;
+  typedef Kokkos::View< uint64_t * , ExecSpace >  debugs_type ;
 
   enum : unsigned { chunk = 64 };
 
   MemoryPool  pool ;
   ptrs_type   ptrs ;
+  debugs_type   debugs ;
   unsigned    stride_chunk ;
   unsigned    fill_stride ;
   unsigned    range_iter ;
@@ -81,6 +83,7 @@ struct TestFunctor {
              , unsigned  arg_repeat )
     : pool()
     , ptrs()
+    , debugs()
     , stride_chunk(0)
     , fill_stride(0)
     , repeat(0)
@@ -92,6 +95,7 @@ struct TestFunctor {
       pool = MemoryPool( m , total_alloc_size , Kokkos::Impl::integral_power_of_two_that_contains( min_superblock_size ) );
 #endif
       ptrs = ptrs_type( Kokkos::view_alloc( m , "ptrs") , number_alloc );
+      debugs = debugs_type( Kokkos::view_alloc( m , "debugs") , number_alloc );
       fill_stride = arg_stride_alloc ;
       stride_chunk = arg_stride_chunk ;
       range_iter   = fill_stride * number_alloc ;
@@ -129,7 +133,9 @@ struct TestFunctor {
 
         const unsigned size_alloc = chunk * ( 1 + ( j % stride_chunk ) );
 
-        ptrs(j) = (uintptr_t) pool.allocate(size_alloc);
+        uint64_t debug;
+        ptrs(j) = (uintptr_t) pool.allocate(size_alloc, 0, &debug);
+        debugs(j) = debug;
 
         if ( ptrs(j) ) ++update ;
         else printf("i = %d failed, update = %ld\n", i, update);
