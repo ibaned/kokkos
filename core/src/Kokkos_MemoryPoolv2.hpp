@@ -55,7 +55,7 @@ enum debug_enum : uint64_t {
   DEBUG_BLOCK_FITS_ANY_SUPERBLOCK   = 1 <<  1,
   DEBUG_PREFETCHING_LOOP            = 1 <<  2,
   DEBUG_PREEMPTED_PREFETCHING       = 1 <<  3,
-  DEBUG_FOUND_PARTFULL              = 1 <<  4,
+  DEBUG_FOUND_PARTFULL_IN_SEARCH              = 1 <<  4,
   DEBUG_ITERATED_PARTFULL_SEARCH    = 1 <<  5,
   DEBUG_WRAPPED_PARTFULL_SEARCH     = 1 <<  6,
   DEBUG_TRY_UPDATE_HINT             = 1 <<  7,
@@ -64,14 +64,21 @@ enum debug_enum : uint64_t {
   DEBUG_UNLOCKED_HINT               = 1 << 10,
   DEBUG_CLAIMED_EMPTY               = 1 << 11,
   DEBUG_FAILED                      = 1 << 12,
-  DEBUG_HINT_FOUND_LOCKED_EMPTY     = 1 << 13,
-  DEBUG_RELIEVED_OF_EMPTY           = 1 << 14,
+  DEBUG_HINT_FOUND_LOCKED_EMPTY_ALLOCATING     = 1 << 13,
+  DEBUG_PREFETCH_SUCCESSFUL         = 1 << 14,
   DEBUG_ACQUIRED_BIT                = 1 << 15,
-  DEBUG_NOT_ASSIGNED_PREFETCH       = 1 << 16,
+  DEBUG_ASSIGNED_PREFETCH           = 1 << 16,
   DEBUG_LOSER                       = 1 << 17,
   DEBUG_TRIED_ACQUIRING_BIT         = 1 << 18,
   DEBUG_ITERATED_EMPTY_SEARCH       = 1 << 19,
   DEBUG_WRAPPED_EMPTY_SEARCH        = 1 << 20,
+  DEBUG_FOUND_EMPTY                 = 1 << 21,
+  DEBUG_FOUND_SUPERBLOCK            = 1 << 22,
+  DEBUG_PARTFULL_MEANS_100          = 1 << 23,
+  DEBUG_PARTFULL_MEANS_94           = 1 << 24,
+  DEBUG_HINT_FOUND_LOCKED_EMPTY_PREFETCH     = 1 << 25,
+  DEBUG_NO_FOUND_PARTFULL           = 1 << 26,
+  DEBUG_FOUND_PARTFULL_ID           = 1 << 27,
 };
 
 namespace Kokkos {
@@ -391,6 +398,8 @@ public:
 
       void * p = 0 ;
 
+      uint64_t debug_state_dump;
+      if (!debug_state) debug_state = &debug_state_dump;
       *debug_state = 0;
 
       if ( alloc_size <= (1UL << m_sb_size_lg2) ) {
@@ -484,6 +493,8 @@ public:
 
             const uint32_t target_count =
               ( 0 == p ) ? block_count : block_count_threshold ;
+            if (0==p) *debug_state |= DEBUG_PARTFULL_MEANS_100;
+            else *debug_state |= DEBUG_PARTFULL_MEANS_94;
 
             //  If the hint is not locked it is supposed to identify
             //  a usable superblock so start searching there.
@@ -507,7 +518,7 @@ public:
               if ( ( ( state >> state_shift ) == block_count_lg2 ) &&
                    ( ( state &  state_mask )  <  target_count ) ) {
 
-                *debug_state |= DEBUG_FOUND_PARTFULL;
+                *debug_state |= DEBUG_FOUND_PARTFULL_IN_SEARCH;
 
                 //  Superblock is the required block size and
                 //  its block count is below the threshold.
@@ -527,6 +538,7 @@ public:
           }
 
           if ( 0 <= sb_id ) { // Found usable partfull superblock.
+            *debug_state |= DEBUG_FOUND_PARTFULL_ID;
 
 // printf("  found partfull( %d )\n" , sb_id );
 
@@ -541,97 +553,106 @@ public:
               Kokkos::atomic_compare_exchange
                 ( hint_sb_id_ptr , hint_sb_id , sb_id );
             }
-          }
-          //------------------------------------------------------------------
-          //  else did not find a usable partfull superblock
-          //  Attempt to acquire an empty superblock.
-          //  Only one thread may attempt to acquire an empty superblock
-          //  for use by this block size.  Use the hint value as a lock to
-          //  guarantee only one thread makes this attempt.
+          } else {
+            *debug_state |= DEBUG_NO_FOUND_PARTFULL;
+            //------------------------------------------------------------------
+            //  else did not find a usable partfull superblock
+            //  Attempt to acquire an empty superblock.
+            //  Only one thread may attempt to acquire an empty superblock
+            //  for use by this block size.  Use the hint value as a lock to
+            //  guarantee only one thread makes this attempt.
 
-          else if ( ( hint_sb_id != hint_lock ) &&
-                    ( hint_sb_id == Kokkos::atomic_compare_exchange
-                        ( hint_sb_id_ptr , hint_sb_id , hint_lock ) ) ) {
-            *debug_state |= DEBUG_LOCKED_HINT;
-          //printf("no partfull, look for empty\n");
+            if ( ( hint_sb_id != hint_lock ) &&
+                      ( hint_sb_id == Kokkos::atomic_compare_exchange
+                          ( hint_sb_id_ptr , hint_sb_id , hint_lock ) ) ) {
+              *debug_state |= DEBUG_LOCKED_HINT;
+            //printf("no partfull, look for empty\n");
 
-            // This thread locked the hint
+              // This thread locked the hint
 
-            const uint32_t claim_state = block_count_lg2 << state_shift ;
+              const uint32_t claim_state = block_count_lg2 << state_shift ;
 
-            int id = sb_id_tic ;
+              int id = sb_id_tic ;
 
-            sb_state_array = m_sb_state_array + ( id * m_sb_state_size );
+              sb_state_array = m_sb_state_array + ( id * m_sb_state_size );
 
-            for ( int i = 0 ; i < m_sb_count && sb_id < 0 ; ++i ) {
+              for ( int i = 0 ; i < m_sb_count && sb_id < 0 ; ++i ) {
 
-              if ( ( 0u == *sb_state_array ) && 
-                   ( 0u == Kokkos::atomic_compare_exchange( sb_state_array, 0u, claim_state) ) ) {
-                *debug_state |= DEBUG_CLAIMED_EMPTY;
-                // Superblock was empty and has been claimed
-              //printf("found empty %d\n", id);
-                sb_id = id ;
-              }
-              else {
-                if ( ++id < m_sb_count ) {
-                  *debug_state |= DEBUG_ITERATED_EMPTY_SEARCH;
-                  sb_state_array += m_sb_state_size ;
+                if ( ( 0u == *sb_state_array ) && 
+                     ( 0u == Kokkos::atomic_compare_exchange( sb_state_array, 0u, claim_state) ) ) {
+                  *debug_state |= DEBUG_CLAIMED_EMPTY;
+                  // Superblock was empty and has been claimed
+                //printf("found empty %d\n", id);
+                  sb_id = id ;
                 }
                 else {
-                  *debug_state |= DEBUG_WRAPPED_EMPTY_SEARCH;
-                  id = 0 ;
-                  sb_state_array = (volatile unsigned *) m_sb_state_array ;
+                  if ( ++id < m_sb_count ) {
+                    *debug_state |= DEBUG_ITERATED_EMPTY_SEARCH;
+                    sb_state_array += m_sb_state_size ;
+                  }
+                  else {
+                    *debug_state |= DEBUG_WRAPPED_EMPTY_SEARCH;
+                    id = 0 ;
+                    sb_state_array = (volatile unsigned *) m_sb_state_array ;
+                  }
                 }
               }
-            }
 
-// printf("  attempt empty( %d )\n" , sb_id );
+// printf  ("  attempt empty( %d )\n" , sb_id );
 
-            // This thread locked the hint and must unlock it.
-            // If acquired a superblock then set that superblock id
-            // else no empty superblock was found so set the old superblock id
+              // This thread locked the hint and must unlock it.
+              // If acquired a superblock then set that superblock id
+              // else no empty superblock was found so set the old superblock id
 
-            Kokkos::atomic_exchange
-              ( hint_sb_id_ptr
-              , uint32_t( sb_id < 0 ? hint_sb_id : sb_id ) );
-            *debug_state |= DEBUG_UNLOCKED_HINT;
+              Kokkos::atomic_exchange
+                ( hint_sb_id_ptr
+                , uint32_t( sb_id < 0 ? hint_sb_id : sb_id ) );
+              *debug_state |= DEBUG_UNLOCKED_HINT;
 
-            if ( sb_id < 0 ) {
-              *debug_state |= DEBUG_FAILED;
-              //  Failed to find an empty superblock.
+              if ( sb_id < 0 ) {
+                *debug_state |= DEBUG_FAILED;
+                //  Failed to find an empty superblock.
 
-              //  There is a slim chance that during all of this
-              //  searching some other thread has deallocated and
-              //  space became available.
-              //  Iterating on this slim chance is a performance penalty
-              //  with use case dependent probability of success.
+                //  There is a slim chance that during all of this
+                //  searching some other thread has deallocated and
+                //  space became available.
+                //  Iterating on this slim chance is a performance penalty
+                //  with use case dependent probability of success.
 
-              printf("no empty, fail.\nthreadIdx.x %d threadIdx.y %d blockDim.x %d blockDim.y %d\n",
-                  threadIdx.x, threadIdx.y, blockDim.x, blockDim.y);
+                printf("no empty, fail.\nthreadIdx.x %d threadIdx.y %d blockDim.x %d blockDim.y %d\n",
+                    threadIdx.x, threadIdx.y, blockDim.x, blockDim.y);
 
-              if ( 0 < retry_limit ) {
-                --retry_limit ;
+                if ( 0 < retry_limit ) {
+                  --retry_limit ;
+                  continue ;
+                }
+                else {
+                  break ;
+                }
+              } else {
+                *debug_state |= DEBUG_FOUND_EMPTY; 
+              }
+            } else {
+              if ( 0 == p ) {
+                *debug_state |= DEBUG_HINT_FOUND_LOCKED_EMPTY_ALLOCATING;
+                // Another thread has the lock and the allocation is not done.
+                // Keep trying to obtain a superblock for the allocation.
                 continue ;
-              }
-              else {
-                break ;
+              } else {
+                *debug_state |= DEBUG_HINT_FOUND_LOCKED_EMPTY_PREFETCH;
               }
             }
-          }
-          else if ( 0 == p ) {
-            *debug_state |= DEBUG_HINT_FOUND_LOCKED_EMPTY;
-            // Another thread has the lock and the allocation is not done.
-            // Keep trying to obtain a superblock for the allocation.
-            continue ;
           }
 
           //------------------------------------------------------------------
           // Arrive here with usable superblock
 
           if ( 0 != p ) {
-            *debug_state |= DEBUG_RELIEVED_OF_EMPTY;
+            *debug_state |= DEBUG_PREFETCH_SUCCESSFUL;
             break ;
           } // Allocation previously successful
+
+          *debug_state |= DEBUG_FOUND_SUPERBLOCK;
 
           {
             const Kokkos::pair<int,int> result =
@@ -655,8 +676,9 @@ public:
                 + ( result.first    << block_size_lg2 ); // block memory
 
               if ( block_count_threshold != uint32_t(result.second) ) {
-                *debug_state |= DEBUG_NOT_ASSIGNED_PREFETCH;
                 break ;
+              } else {
+                *debug_state |= DEBUG_ASSIGNED_PREFETCH;
               }
             }
           }

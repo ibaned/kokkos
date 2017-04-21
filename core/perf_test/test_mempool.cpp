@@ -71,8 +71,14 @@ static void print_debug_code(uint64_t code) {
   if (code & DEBUG_PREEMPTED_PREFETCHING) {
     std::cerr << "was preempted while prefetching\n";
   }
-  if (code & DEBUG_FOUND_PARTFULL) {
-    std::cerr << "found a partfull superblock\n";
+  if (code & DEBUG_PARTFULL_MEANS_100) {
+    std::cerr << "searched for partfull for allocation, so looked for < 100% full\n";
+  }
+  if (code & DEBUG_PARTFULL_MEANS_94) {
+    std::cerr << "searched for partfull for prefetch, so looked for < 94% full\n";
+  }
+  if (code & DEBUG_HINT_FOUND_LOCKED_PARTFULL) {
+    std::cerr << "hint found locked when searching for partfull\n";
   }
   if (code & DEBUG_ITERATED_PARTFULL_SEARCH) {
     std::cerr << "searched more than one superblock for partfull\n";
@@ -80,29 +86,47 @@ static void print_debug_code(uint64_t code) {
   if (code & DEBUG_WRAPPED_PARTFULL_SEARCH) {
     std::cerr << "wrapped around the superblocks for partfull\n";
   }
+  if (code & DEBUG_NO_FOUND_PARTFULL) {
+    std::cerr << "did not find a partfull superblock\n";
+  }
+  if (code & DEBUG_FOUND_PARTFULL_IN_SEARCH) {
+    std::cerr << "found a partfull superblock during search\n";
+  }
+  if (code & DEBUG_FOUND_PARTFULL_ID) {
+    std::cerr << "found a partfull superblock id\n";
+  }
   if (code & DEBUG_TRY_UPDATE_HINT) {
     std::cerr << "tried to update the hint via CAS\n";
-  }
-  if (code & DEBUG_HINT_FOUND_LOCKED_PARTFULL) {
-    std::cerr << "hint found locked when searching for partfull\n";
   }
   if (code & DEBUG_LOCKED_HINT) {
     std::cerr << "locked the hint\n";
   }
-  if (code & DEBUG_UNLOCKED_HINT) {
-    std::cerr << "unlocked the hint\n";
+  if (code & DEBUG_ITERATED_EMPTY_SEARCH) {
+    std::cerr << "searched more than one superblock for empty\n";
+  }
+  if (code & DEBUG_WRAPPED_EMPTY_SEARCH) {
+    std::cerr << "wrapped around the superblocks for empty\n";
   }
   if (code & DEBUG_CLAIMED_EMPTY) {
     std::cerr << "claimed an empty superblock\n";
   }
-  if (code & DEBUG_FAILED) {
-    std::cerr << "allocate() failed !\n";
+  if (code & DEBUG_UNLOCKED_HINT) {
+    std::cerr << "unlocked the hint\n";
   }
-  if (code & DEBUG_HINT_FOUND_LOCKED_EMPTY) {
-    std::cerr << "hint found locked when searching for empty\n";
+  if (code & DEBUG_FOUND_EMPTY) {
+    std::cerr << "found an empty superblock\n";
   }
-  if (code & DEBUG_RELIEVED_OF_EMPTY) {
-    std::cerr << "relieved of previously assigned find-empty duty (someone else locked)\n";
+  if (code & DEBUG_HINT_FOUND_LOCKED_EMPTY_ALLOCATING) {
+    std::cerr << "hint found locked when searching for empty superblock for own allocation\n";
+  }
+  if (code & DEBUG_HINT_FOUND_LOCKED_EMPTY_PREFETCH) {
+    std::cerr << "hint found locked when searching for empty superblock for prefetch\n";
+  }
+  if (code & DEBUG_PREFETCH_SUCCESSFUL) {
+    std::cerr << "successfully prefetched a block\n";
+  }
+  if (code & DEBUG_FOUND_SUPERBLOCK) {
+    std::cerr << "found superblock to allocate into\n";
   }
   if (code & DEBUG_TRIED_ACQUIRING_BIT) {
     std::cerr << "tried to acquire a bitset bit\n";
@@ -110,17 +134,14 @@ static void print_debug_code(uint64_t code) {
   if (code & DEBUG_ACQUIRED_BIT) {
     std::cerr << "acquired a bitset bit\n";
   }
-  if (!(code & DEBUG_NOT_ASSIGNED_PREFETCH)) {
+  if (code & DEBUG_ASSIGNED_PREFETCH) {
     std::cerr << "assigned prefetch duty after acquiring a bit\n";
   }
   if (code & DEBUG_LOSER) {
     std::cerr << "is a loser. either lost a race for a bit or assigned to prefetch.\n";
   }
-  if (code & DEBUG_ITERATED_EMPTY_SEARCH) {
-    std::cerr << "searched more than one superblock for empty\n";
-  }
-  if (code & DEBUG_WRAPPED_EMPTY_SEARCH) {
-    std::cerr << "wrapped around the superblocks for empty\n";
+  if (code & DEBUG_FAILED) {
+    std::cerr << "allocate() failed !\n";
   }
 }
 
@@ -232,7 +253,8 @@ struct TestFunctor {
       for (auto pair : unique_codes_and_reps) {
         auto code = pair.first;
         auto i = pair.second;
-        std::cerr << "i = " << i << " had these debug traits:\n";
+        std::cerr << "i = " << i << " had these debug traits: "
+          << std::hex << code << '\n';
         print_debug_code(code);
       }
       std::cerr << "END DEBUG TRAITS\n";
