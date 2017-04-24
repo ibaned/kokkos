@@ -306,7 +306,7 @@ int main( int argc , char* argv[] )
     Kokkos::finalize();
   }
 
-  printf( "\"mempool: alloc super stride level span inner outer number time\" %ld %d %d %d %d %d %d %d %f\n"
+  printf( "\"mempool: alloc super stride level span inner outer number\" %ld %d %d %d %d %d %d %d\n"
         , total_alloc_size
         , min_superblock_size
         , fill_stride
@@ -314,8 +314,13 @@ int main( int argc , char* argv[] )
         , chunk_span
         , repeat_inner
         , repeat_outer
-        , number_alloc
+        , number_alloc );
+
+  printf( "\"mempool: alloc/dealloc test time\" %.8f\n"
         , time );
+
+  printf( "\"mempool: alloc/dealloc pairs per second\" %f\n"
+        , (number_alloc * repeat_inner) / time );
 
   if ( error ) { printf("  TEST FAILED\n"); }
 
