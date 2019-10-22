@@ -827,28 +827,35 @@ TRIBITS_ADD_ADVANCED_TEST( UnitTest_PushFinalizeHook_terminate
     ALWAYS_FAIL_ON_ZERO_RETURN
 )
 
-TRIBITS_ADD_EXECUTABLE( StackTraceTestExec
+KOKKOS_ADD_TEST_EXECUTABLE( StackTraceTestExec
   SOURCES TestStackTrace.cpp
   TESTONLYLIBS kokkos_gtest ${TEST_LINK_TARGETS}
 )
 
-TRIBITS_ADD_TEST(
-  StackTraceTestExec
-  NAME UnitTest_StackTrace
-  COMM serial mpi
-  NUM_MPI_PROCS 1
-  FAIL_REGULAR_EXPRESSION "FAILED"
-)
+KOKKOS_ADD_TEST( NAME UnitTest_StackTraceTest_normal
+                 EXE  StackTraceTestExec 
+                 CMD_ARGS --gtest_filter=*normal
+                 FAIL_REGULAR_EXPRESSION "FAILED"
+               )
 
-TRIBITS_ADD_ADVANCED_TEST( UnitTest_StackTrace_terminate
-  TEST_0
-    EXEC StackTraceTestExec
-    ARGS "terminate"
-    NUM_MPI_PROCS 1
-    PASS_REGULAR_EXPRESSION
-      "I am the custom std::terminate handler."
-    ALWAYS_FAIL_ON_ZERO_RETURN
-)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run_test_exec.sh ${CMAKE_CURRENT_BINARY_DIR}/run_test_exec.sh COPYONLY)
+
+
+if (CMAKE_CXX_FLAGS MATCHES "rdynamic")
+   SET(STACKTRACE_TEST_MSG "Kokkos::Impl::save_stacktrace()")
+else()
+   SET(STACKTRACE_TEST_MSG "I am the custom std::terminate handler.")
+endif()
+
+
+## this is linux only, need a windows version too.
+KOKKOS_ADD_TEST( NAME UnitTest_StackTraceTest_terminate
+                 WILL_FAIL
+                 EXE  ${CMAKE_CURRENT_BINARY_DIR}/run_test_exec.sh
+                 CMD_ARGS ${CMAKE_CURRENT_BINARY_DIR}/StackTraceTestExec --gtest_filter=*terminate FAIL
+                 FAIL_REGULAR_EXPRESSION
+                    ${STACKTRACE_TEST_MSG}
+               )
 
 foreach(INITTESTS_NUM RANGE 1 16)
 TRIBITS_ADD_EXECUTABLE_AND_TEST(

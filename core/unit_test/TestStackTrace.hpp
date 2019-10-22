@@ -40,11 +40,10 @@
 // ************************************************************************
 //@HEADER
 */
-#include <gtest/gtest.h>
 #include <iostream>
+#include <gtest/gtest.h>
 #include "Kokkos_Core.hpp"
 
-#include <default/TestDefaultDeviceType_Category.hpp>
 #include <impl/Kokkos_Stacktrace.hpp>
 
 namespace Test {
@@ -61,7 +60,7 @@ void stacktrace_test_f4();
 
 void my_fancy_handler();
 
-int test_stacktrace() {
+int test_stacktrace(bool bTerminate) {
   
   bool success = true;
 
@@ -157,12 +156,18 @@ int test_stacktrace() {
   Kokkos::Impl::set_kokkos_terminate_handler(my_fancy_handler);
 
   // TODO test that this prints "Oh noes!" and the correct stacktrace.
-  std::terminate();
+  if (bTerminate) {
+     std::terminate();
+  }
   return success ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
-TEST_F(defaultdevicetype, stacktrace) {
-  test_stacktrace();
+TEST(defaultdevicetype, stacktrace_normal) {
+  test_stacktrace(false);
+}
+
+TEST(defaultdevicetype, stacktrace_terminate) {
+  test_stacktrace(true);
 }
 
 }  // namespace Test
